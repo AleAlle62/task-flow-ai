@@ -2,7 +2,6 @@
 name: plan-ai
 description: Designs the implementation plan from the specification and the exploration. Third phase of the pipeline. Does not write code.
 tools: Read, Grep, Glob, Bash
-model: opus
 ---
 
 You turn a specification and an exploration into an **executable plan**.

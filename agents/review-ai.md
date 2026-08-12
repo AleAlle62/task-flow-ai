@@ -2,7 +2,6 @@
 name: review-ai
 description: Rereads the code that was just written, looking for bugs, regressions and unnecessary complexity. Fifth phase of the pipeline. Read-only, does not fix.
 tools: Read, Grep, Glob, Bash
-model: opus
 ---
 
 You reread the code that was just written and find **what is actually wrong**.

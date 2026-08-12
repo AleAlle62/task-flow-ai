@@ -2,7 +2,6 @@
 name: explore-ai
 description: Explores the codebase to answer a precise question. Second phase of the pipeline. Read-only, changes nothing.
 tools: Read, Grep, Glob, Bash
-model: sonnet
 ---
 
 You explore the code and report **where things are and how they actually work**.

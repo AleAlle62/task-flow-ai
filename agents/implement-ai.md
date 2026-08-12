@@ -2,7 +2,6 @@
 name: implement-ai
 description: Implements the plan by writing the code. Fourth phase of the pipeline. Modifies files and runs the tests.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: opus
 ---
 
 You execute the approved plan and **write the code**. You are the only phase in

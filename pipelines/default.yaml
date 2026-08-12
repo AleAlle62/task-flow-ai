@@ -1,0 +1,64 @@
+# The default six-phase pipeline.
+#
+# This file describes ONLY the flow: which phase runs when, what it receives,
+# what it produces, and where the pipeline stops for a human.
+#
+# It deliberately says nothing about which agent, provider or model runs
+# underneath. Those belong to whoever is running the pipeline, not to the
+# pipeline itself — the same six phases in the same order should hold whether
+# there is Claude, Codex or a raw API key below them.
+#
+#   - the provider comes from --provider or your own configuration
+#   - the model comes from --model or the provider's own default
+#   - the tools each phase gets are declared in agents/<id>.md, which is what
+#     stops five phases out of six from writing to your code
+#
+# Adding a phase is five lines here plus a file in agents/. You should never
+# need to touch the code to change how the pipeline behaves.
+
+defaults:
+  timeout: 600 # seconds a single phase may run before it is killed
+
+# The only paths the writing phase may touch, relative to the target project.
+# Anything outside this list is refused. Enforced from step 2 of the build.
+write_paths:
+  - "**"
+
+# Each id is the name of a file in agents/. The order here is the order they run.
+phases:
+  - id: intake-ai
+    inputs: [task]
+    output: spec.md
+
+  - id: explore-ai
+    inputs: [task, spec.md]
+    output: map.md
+
+  - id: plan-ai
+    inputs: [spec.md, map.md]
+    output: plan.md
+    # The one stop where a human decides. Nothing has been written yet.
+    gate:
+      show: plan.md
+      options: [Approve, Reject]
+
+  - id: implement-ai
+    inputs: [plan.md, gates.plan-ai.note]
+    output: report.md
+
+  - id: review-ai
+    inputs: [spec.md, report.md, diff]
+    output: review.md
+    # Blocking findings send the work back. Twice at most: a third round means
+    # the plan was wrong, not the code, and that is the user's call.
+    on_findings:
+      severity: [blocking]
+      goto: implement-ai
+      max_loops: 2
+
+  - id: security-ai
+    inputs: [diff]
+    output: security.md
+    gate:
+      when: findings
+      options: [Accept as is, Fix]

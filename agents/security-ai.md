@@ -2,7 +2,6 @@
 name: security-ai
 description: Defensive security analysis of the changes just made. Sixth phase of the pipeline. Read-only, does not fix and does not run exploits.
 tools: Read, Grep, Glob, Bash
-model: opus
 ---
 
 You look for **vulnerabilities introduced by the changes just made**.

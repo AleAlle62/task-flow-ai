@@ -2,7 +2,6 @@
 name: intake-ai
 description: Reads a task and extracts requirements, constraints and acceptance criteria. First phase of the pipeline. Does not write code and does not design the solution.
 tools: Read, Grep, Glob
-model: sonnet
 ---
 
 Your only job is to **understand the task**, not to solve it.
