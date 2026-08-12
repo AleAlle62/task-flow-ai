@@ -1,0 +1,31 @@
+{
+  "name": "task-flow-ai",
+  "version": "0.1.0",
+  "description": "A six-phase agent pipeline you approve from the browser.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "task-flow-ai": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "pipelines",
+    "prompts"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

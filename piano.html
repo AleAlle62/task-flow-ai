@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piano di progetto — pipeline di agenti con approvazione dal browser</title>
+<style>
+  :root{
+    --bg:#fbfbfc; --panel:#fff; --panel-2:#f2f4f7; --line:#e3e6eb;
+    --text:#141a23; --dim:#5f6875; --faint:#9aa2b0;
+    --accent:#5b6ef5; --green:#12a06a; --amber:#c2811b; --red:#d4485f;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0d1015; --panel:#151a21; --panel-2:#1b222b; --line:#252d38;
+      --text:#e8edf4; --dim:#98a1b0; --faint:#69727f;
+      --accent:#8b9bff; --green:#3ecf8e; --amber:#f0a35e; --red:#e5677b;
+    }
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0; background:var(--bg); color:var(--text);
+       font:16px/1.65 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;}
+  .wrap{max-width:860px; margin:0 auto; padding:56px 24px 90px;}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+
+  .eyebrow{font-size:12px; letter-spacing:1.4px; text-transform:uppercase; color:var(--faint); font-weight:600;}
+  h1{font-size:clamp(28px,4.6vw,40px); line-height:1.15; letter-spacing:-.02em; margin:12px 0 14px; font-weight:680;}
+  .lede{font-size:18px; color:var(--dim); margin:0 0 26px; max-width:64ch;}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:52px;}
+  .chip{font-size:12.5px; padding:4px 11px; border:1px solid var(--line); border-radius:20px; color:var(--dim); background:var(--panel);}
+  .chip b{color:var(--text); font-weight:600;}
+
+  h2{font-size:13px; letter-spacing:1.2px; text-transform:uppercase; color:var(--faint);
+     font-weight:650; margin:56px 0 18px; padding-bottom:9px; border-bottom:1px solid var(--line);}
+  h3{font-size:17px; margin:0 0 6px; font-weight:640; letter-spacing:-.01em;}
+  p{margin:0 0 14px; max-width:68ch;}
+  a{color:var(--accent);}
+  code{background:var(--panel-2); padding:1.5px 6px; border-radius:5px; font-size:.87em;
+       font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  pre{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px;
+      overflow-x:auto; font-size:13px; line-height:1.6; margin:0 0 18px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  pre .c{color:var(--faint);}
+  pre .k{color:var(--accent);}
+  pre .s{color:var(--green);}
+
+  .note{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent);
+        border-radius:9px; padding:15px 18px; margin:0 0 20px;}
+  .note.warn{border-left-color:var(--amber);}
+  .note.rule{border-left-color:var(--red);}
+  .note .t{font-size:12px; text-transform:uppercase; letter-spacing:.9px; font-weight:650; color:var(--dim); margin-bottom:5px;}
+  .note p:last-child{margin-bottom:0;}
+
+  figure{margin:0 0 26px;}
+  figure svg{width:100%; height:auto; display:block;}
+  figcaption{font-size:13px; color:var(--faint); margin-top:9px; text-align:center;}
+
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:0 0 22px;}
+  ol.steps li{counter-increment:s; position:relative; padding:5px 0 5px 40px; max-width:68ch;}
+  ol.steps li::before{content:counter(s); position:absolute; left:0; top:6px; width:24px; height:24px;
+      border-radius:50%; background:var(--panel-2); color:var(--dim); font-size:12px; font-weight:650;
+      display:grid; place-items:center; font-family:ui-monospace,Menlo,monospace;}
+
+  .phase{display:grid; grid-template-columns:64px 1fr; gap:18px; padding:20px 0; border-top:1px solid var(--line);}
+  .phase:last-of-type{border-bottom:1px solid var(--line);}
+  .num{font-family:ui-monospace,Menlo,monospace; font-size:13px; font-weight:650; color:var(--faint);
+       border:1px solid var(--line); border-radius:8px; height:34px; display:grid; place-items:center; background:var(--panel);}
+  .phase.key .num{color:var(--bg); background:var(--text); border-color:var(--text);}
+  .phase .body p{margin-bottom:10px;}
+  .check{background:var(--panel-2); border-radius:8px; padding:11px 14px; font-size:14px; margin-top:2px;}
+  .check b{display:block; font-size:11.5px; text-transform:uppercase; letter-spacing:.8px; color:var(--faint); margin-bottom:3px; font-weight:650;}
+
+  ul.plain{padding-left:20px; margin:0 0 16px; max-width:68ch;}
+  ul.plain li{margin:6px 0;}
+
+  .open{background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:6px 20px; margin-bottom:22px;}
+  .open .row{display:flex; gap:13px; padding:13px 0; border-bottom:1px solid var(--line); align-items:flex-start;}
+  .open .row:last-child{border-bottom:none;}
+  .box{width:15px; height:15px; border:1.5px solid var(--faint); border-radius:4px; flex:none; margin-top:4px;}
+  .open .row div{max-width:62ch;}
+  .open .row div b{display:block; margin-bottom:2px;}
+  .open .row div span{color:var(--dim); font-size:14.5px;}
+
+  footer{margin-top:60px; padding-top:20px; border-top:1px solid var(--line); color:var(--faint); font-size:13px;}
+  @media (max-width:620px){
+    .wrap{padding:38px 18px 70px;}
+    .phase{grid-template-columns:1fr; gap:10px;}
+    .num{width:44px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Piano di progetto · bozza per revisione</div>
+  <h1>Una pipeline di agenti che ti chiede il permesso dal browser</h1>
+  <p class="lede">Sei fasi separate — leggere il task, esplorare, pianificare, implementare, rivedere, controllare la sicurezza — orchestrate da un tool tuo, con qualsiasi agente sotto. Le decisioni le prendi da una pagina web, non dal terminale.</p>
+
+  <div class="meta">
+    <span class="chip">nome <b>da decidere</b></span>
+    <span class="chip">stack <b>Node + TypeScript</b></span>
+    <span class="chip">UI <b>Vue 3 + Vite</b></span>
+    <span class="chip">licenza <b>MIT</b></span>
+    <span class="chip">repo <b>unico</b></span>
+  </div>
+
+  <h2>Da dove veniamo</h2>
+  <p>Esiste già, in <code>~/.claude/monitor/</code>, un monitor dei subagenti di Claude Code: hook globali, log centrale, dashboard live con flow orizzontale e approvazione del piano dal browser. Funziona e resta lì: non lo tocchiamo.</p>
+  <p>Il progetto nuovo è un'altra cosa. Lì <b>osservi</b> Claude Code mentre lavora; qui <b>orchestri tu</b> le fasi, e sotto ci puoi mettere qualsiasi agente. È la differenza tra dipendere per sempre da quanto l'agente ospite espone, e avere un comportamento identico ovunque.</p>
+
+  <div class="note">
+    <div class="t">Cosa sopravvive del lavoro già fatto</div>
+    <p>Il ciclo di approvazione bloccante, lo schema degli eventi, la dashboard con il flow e la lista comandi, e i sei system prompt delle fasi. Sparisce il layer degli hook: se sei tu a lanciare l'agente, sai già in che fase ti trovi.</p>
+  </div>
+
+  <h2>Come sta insieme</h2>
+  <figure>
+    <svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagramma dell'architettura">
+      <defs>
+        <marker id="a" markerWidth="9" markerHeight="9" refX="7.5" refY="3.2" orient="auto-start-reverse">
+          <path d="M0,0 L7,3.2 L0,6.4 z" fill="var(--faint)"/>
+        </marker>
+      </defs>
+      <g font-family="ui-monospace,Menlo,monospace" font-size="12.5">
+
+        <rect x="14" y="20" width="176" height="46" rx="9" fill="var(--panel)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="102" y="41" text-anchor="middle" fill="var(--text)" font-size="12.5">agentview run</text>
+        <text x="102" y="56" text-anchor="middle" fill="var(--faint)" font-size="11">"sistema il bug…"</text>
+
+        <line x1="190" y1="43" x2="243" y2="43" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#a)"/>
+
+        <rect x="248" y="12" width="196" height="62" rx="9" fill="var(--panel)" stroke="var(--accent)" stroke-width="2"/>
+        <text x="346" y="37" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="600">Orchestratore</text>
+        <text x="346" y="55" text-anchor="middle" fill="var(--dim)" font-size="11">fasi · artefatti · gate · resume</text>
+
+        <line x1="444" y1="43" x2="497" y2="43" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#a)"/>
+
+        <rect x="502" y="12" width="196" height="62" rx="9" fill="var(--panel)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="600" y="37" text-anchor="middle" fill="var(--text)" font-size="12.5">Provider adapter</text>
+        <text x="600" y="55" text-anchor="middle" fill="var(--faint)" font-size="11">claude · codex · API</text>
+
+        <text x="358" y="103" text-anchor="start" fill="var(--faint)" font-size="11">esegue in sequenza</text>
+        <line x1="346" y1="74" x2="346" y2="120" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#a)"/>
+
+        <g>
+          <rect x="14" y="132" width="120" height="40" rx="8" fill="var(--panel-2)" stroke="var(--line)"/>
+          <text x="74" y="156" text-anchor="middle" fill="var(--dim)" font-size="11.5">intake</text>
+          <rect x="146" y="132" width="120" height="40" rx="8" fill="var(--panel-2)" stroke="var(--line)"/>
+          <text x="206" y="156" text-anchor="middle" fill="var(--dim)" font-size="11.5">explore</text>
+          <rect x="278" y="132" width="120" height="40" rx="8" fill="var(--panel-2)" stroke="var(--amber)" stroke-width="1.8"/>
+          <text x="338" y="151" text-anchor="middle" fill="var(--text)" font-size="11.5">plan</text>
+          <text x="338" y="164" text-anchor="middle" fill="var(--amber)" font-size="9.5">GATE</text>
+          <rect x="410" y="132" width="120" height="40" rx="8" fill="var(--panel-2)" stroke="var(--green)" stroke-width="1.8"/>
+          <text x="470" y="151" text-anchor="middle" fill="var(--text)" font-size="11.5">implement</text>
+          <text x="470" y="164" text-anchor="middle" fill="var(--green)" font-size="9.5">scrive</text>
+          <rect x="542" y="132" width="120" height="40" rx="8" fill="var(--panel-2)" stroke="var(--line)"/>
+          <text x="602" y="156" text-anchor="middle" fill="var(--dim)" font-size="11.5">review</text>
+          <rect x="674" y="132" width="132" height="40" rx="8" fill="var(--panel-2)" stroke="var(--line)"/>
+          <text x="740" y="156" text-anchor="middle" fill="var(--dim)" font-size="11.5">security</text>
+        </g>
+
+        <path d="M602 174 L602 198 L470 198 L470 176" fill="none" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#a)"/>
+        <text x="536" y="214" text-anchor="middle" fill="var(--faint)" font-size="10">rilievi bloccanti · max 2 giri</text>
+
+        <line x1="338" y1="176" x2="338" y2="250" stroke="var(--accent)" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+
+        <rect x="218" y="254" width="240" height="46" rx="9" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.8"/>
+        <text x="338" y="274" text-anchor="middle" fill="var(--text)" font-size="12.5">Dashboard</text>
+        <text x="338" y="289" text-anchor="middle" fill="var(--faint)" font-size="11">mostra il piano · attende te</text>
+
+        <line x1="742" y1="174" x2="694" y2="250" stroke="var(--faint)" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#a)"/>
+        <rect x="560" y="254" width="246" height="46" rx="9" fill="var(--panel)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="683" y="274" text-anchor="middle" fill="var(--text)" font-size="12.5">.agentview/runs/&lt;id&gt;/</text>
+        <text x="683" y="289" text-anchor="middle" fill="var(--faint)" font-size="11">ogni fase scrive il suo artefatto</text>
+      </g>
+    </svg>
+    <figcaption>L'orchestratore è il centro: le fasi non parlano tra loro, si passano artefatti su disco.</figcaption>
+  </figure>
+
+  <h2>Il flusso, per chi lo usa</h2>
+  <ol class="steps">
+    <li>Clona il repo e lancia <code>npm install</code>.</li>
+    <li><code>init</code> chiede quale provider usare — il CLI che ha già installato, oppure una API key.</li>
+    <li>Lancia il task: <code class="mono">run "sistema il bug del carrello vuoto"</code>.</li>
+    <li>Si apre il browser, il flow parte e si illumina la prima fase.</li>
+    <li>Alla fase <b>plan</b> la pipeline si ferma: il piano compare nella pagina, tu approvi o rifiuti con una nota.</li>
+    <li><b>implement</b> scrive il codice; sotto il flow scorrono i comandi in tempo reale.</li>
+    <li><b>review</b> e <b>security</b> girano; se trovano cose bloccanti si torna a implement, al massimo due giri.</li>
+    <li>Ultima fermata se restano rilievi aperti, poi il riepilogo.</li>
+    <li>Gli artefatti restano su disco: rileggibili, e riutilizzabili per riprendere una run interrotta.</li>
+  </ol>
+
+  <h2>Il file che decide tutto</h2>
+  <p>La forma di questo YAML determina l'architettura del resto. È anche ciò che rende il progetto <em>di chi lo clona</em>: aggiungere una fase sono cinque righe qui e un markdown, senza toccare il codice.</p>
+  <pre><span class="c"># pipelines/default.yaml</span>
+<span class="k">provider</span>: claude-cli
+<span class="k">defaults</span>: { model: sonnet, timeout: <span class="s">600</span> }
+
+<span class="k">phases</span>:
+  - id: intake
+    inputs: [task]
+    output: spec.md
+
+  - id: explore
+    inputs: [task, spec.md]
+    output: map.md
+
+  - id: plan
+    model: opus
+    inputs: [spec.md, map.md]
+    output: plan.md
+    gate: { show: plan.md, options: [Approva, Rifiuta] }
+
+  - id: implement
+    model: opus
+    write: <span class="s">true</span>              <span class="c"># l'unica fase che può scrivere</span>
+    inputs: [plan.md, gates.plan.note]
+    output: report.md
+
+  - id: review
+    inputs: [spec.md, report.md, diff]
+    output: review.md
+    on_findings: { severity: [blocking], goto: implement, max_loops: <span class="s">2</span> }
+
+  - id: security
+    inputs: [diff]
+    output: security.md
+    gate: { when: findings, options: [Va bene così, Correggi] }</pre>
+  <p>Il prompt di ogni fase sta in <code>prompts/&lt;id&gt;.md</code>, sovrascrivibile. <code>write: true</code> su una sola fase è anche il confine di sicurezza del progetto, leggibile a colpo d'occhio.</p>
+
+  <h2>Le fasi di lavoro</h2>
+
+  <div class="phase">
+    <div class="num">0</div>
+    <div class="body">
+      <h3>Decisioni da chiudere prima di scrivere codice</h3>
+      <p>Nome (libero su npm e GitHub, e che non sembri ufficiale di Anthropic), lingua del repo, licenza MIT, e lo scope della v0.1: un provider, sei fasi, un gate obbligatorio.</p>
+      <div class="check"><b>Tu controlli</b>Approvi nome, lingua e scope. Cinque minuti.</div>
+    </div>
+  </div>
+
+  <div class="phase key">
+    <div class="num">1</div>
+    <div class="body">
+      <h3>Il motore, da terminale</h3>
+      <p>Orchestratore, artefatti su disco, un provider, fasi in sequenza che si passano il contesto. Nessuna UI, nessun gate, output su stdout.</p>
+      <div class="check"><b>Tu controlli</b>Lanci una run su un tuo progetto vero e leggi i sei artefatti. Una domanda sola: <b>il risultato è migliore di un agente singolo?</b> Se no, ci fermiamo e ripensiamo le fasi.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">2</div>
+    <div class="body">
+      <h3>I gate, ancora da terminale</h3>
+      <p>Le fermate reali con la nota, il loop di correzione review → implement, il resume dopo un crash.</p>
+      <div class="check"><b>Tu controlli</b>Rifiuti un piano di proposito e verifichi che si fermi. Ammazzi il processo a metà e verifichi che riparta dalla fase giusta.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">3</div>
+    <div class="body">
+      <h3>Server e dashboard</h3>
+      <p>Qui si riusa quasi tutto quello che esiste già: schema eventi, SSE, flow orizzontale, lista comandi, pannello di approvazione. Cambia solo la sorgente degli eventi.</p>
+      <div class="check"><b>Tu controlli</b>Una run intera guardata solo dal browser, approvazione inclusa, senza mai tornare al terminale.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">4</div>
+    <div class="body">
+      <h3>Configurabilità</h3>
+      <p>Pipeline e prompt sovrascrivibili, modello per fase, temi (incluso quello con i nomi propri), comando di <code>init</code>.</p>
+      <div class="check"><b>Tu controlli</b>Aggiungi una settima fase inventata modificando solo lo YAML. Se ci riesci, la promessa "programmalo come fosse tuo" è vera.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">5</div>
+    <div class="body">
+      <h3>Secondo provider</h3>
+      <p>Uno solo, per dimostrare che l'astrazione regge — e per scoprire dove non regge.</p>
+      <div class="check"><b>Tu controlli</b>La stessa run con due provider diversi.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">6</div>
+    <div class="body">
+      <h3>Packaging e documentazione</h3>
+      <p>Installazione funzionante da repo pulito, README con GIF, CI su Linux e macOS, CHANGELOG, template di issue, e quattro o cinque issue etichettate <code>good first issue</code> — senza quelle nessuno contribuisce.</p>
+      <div class="check"><b>Tu controlli</b>Cloni in una cartella vuota e segui il README alla lettera. Tutto ciò che ti blocca è un bug di documentazione.</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">7</div>
+    <div class="body">
+      <h3>Lancio</h3>
+      <p>Solo dopo che la fase 6 è passata: un lancio su un progetto che non si installa al primo colpo brucia l'unica occasione che hai.</p>
+      <ul class="plain">
+        <li><b>L'asset che conta</b> è una GIF di venti secondi: il flow che si illumina, il piano che compare nel browser, il click su Approva. Fa il 90% del lavoro, perché si capisce senza leggere.</li>
+        <li><b>Il README</b> deve rispondere in dieci secondi a «cosa fa e perché non è l'ennesimo wrapper». La risposta: approvi il piano dal browser, e le fasi sono tue.</li>
+        <li><b>Canali, in ordine</b>: Show HN (martedì–giovedì, mattina US) → Reddit e i Discord di settore → X e LinkedIn → dev.to → PR alle awesome-list. Non tutti insieme: se il primo rivela un problema, lo sistemi prima di bruciare gli altri.</li>
+        <li><b>Build in public</b> durante le fasi 1–5: due o tre clip corte a settimana. Porta i primi utenti prima del lancio, che è quando servono.</li>
+      </ul>
+      <div class="note warn" style="margin-bottom:0">
+        <div class="t">Regola non negoziabile</div>
+        <p>Non annunciare provider che non hai testato di persona. È il modo più veloce di perdere credibilità in un ambito dove tutti annunciano tutto.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="num">8</div>
+    <div class="body">
+      <h3>Dopo il lancio</h3>
+      <p>Rispondere alle issue entro 24–48 ore nella prima settimana, roadmap pubblica, e decidere presto se accetti contributi o se è un progetto personale pubblicato. Entrambe le cose vanno bene, ma vanno dette nel README.</p>
+    </div>
+  </div>
+
+  <div class="note rule">
+    <div class="t">L'unico vincolo rigido sull'ordine</div>
+    <p>La fase 1 prima di tutto il resto, e il suo checkpoint preso sul serio. Se il passaggio di contesto tra fasi separate non produce un risultato migliore di un agente singolo, tutto ciò che sta a valle è decorazione — e conviene scoprirlo in due giorni, non dopo tre settimane di dashboard.</p>
+  </div>
+
+  <h2>Aperto, per stasera</h2>
+  <div class="open">
+    <div class="row"><div class="box"></div><div><b>Il nome</b><span>Da verificare libero su npm e GitHub. Non può contenere "Claude" o "Anthropic" in modo da sembrare ufficiale.</span></div></div>
+    <div class="row"><div class="box"></div><div><b>Lingua del repo</b><span>Inglese per codice, prompt, README e issue. È la scelta che decide se il progetto è usabile fuori dall'Italia.</span></div></div>
+    <div class="row"><div class="box"></div><div><b>Nomi delle fasi</b><span>Neutri di default; i nomi propri restano come tema opzionale, che costa nulla ed è il tipo di dettaglio che fa mettere una stella.</span></div></div>
+    <div class="row"><div class="box"></div><div><b>Permessi della fase che scrive</b><span>Il repo, una volta clonato, lancia un agente che modifica file. Sandbox, whitelist di percorsi, o approvazione del diff prima della scrittura: va deciso e scritto in cima al README.</span></div></div>
+    <div class="row"><div class="box"></div><div><b>Quale secondo provider</b><span>Codex CLI o OpenCode. Da verificare la forma reale dei loro eventi prima di prometterla.</span></div></div>
+  </div>
+
+  <footer>
+    Bozza da rivedere insieme. Il monitor esistente in <code>~/.claude/monitor/</code> resta attivo e indipendente da questo progetto.
+  </footer>
+
+</div>
+</body>
+</html>
