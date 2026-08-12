@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "task-flow-ai",
+  "description": "A six-phase agent pipeline that stops and asks before it writes code.",
+  "owner": {
+    "name": "AleAlle62"
+  },
+  "plugins": [
+    {
+      "name": "task-flow-ai",
+      "version": "0.1.0",
+      "description": "Runs a coding task through six separate phases — intake, explore, plan, implement, review, security — each as a fresh subagent that reads only the artifacts written before it. Stops after the plan and waits for your approval. Every phase leaves its artifact on disk, so a run can be reread afterwards.",
+      "author": {
+        "name": "AleAlle62"
+      },
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

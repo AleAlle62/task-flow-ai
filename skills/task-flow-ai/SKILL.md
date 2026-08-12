@@ -31,8 +31,18 @@ Tell the user the run id and the path, in one line, then start.
 
 Run these in order. For each one:
 
-1. Spawn the subagent named in the table, with `run_in_background: false` — the
-   next phase cannot start without this one's artifact.
+1. Run it as a **fresh subagent**: an agent that starts with none of this
+   conversation's context and is instructed by the phase file
+   `agents/<name>.md`. Use whatever mechanism your tool provides for this —
+   named subagents, a spawned agent, a separate session. Wait for it to finish;
+   the next phase cannot start without this one's artifact.
+
+   **If your tool cannot start an agent with a clean context, stop and say so.**
+   Running the six phases inside this one conversation would mean the phase
+   reviewing the code is the same agent that wrote it, carrying everything it
+   already decided — which is the exact failure this pipeline exists to prevent.
+   A degraded run that looks like a real one is worse than no run.
+
 2. Give it a prompt containing: the task, the **absolute paths** of the
    artifacts it may read (it reads them itself — do not paste their contents),
    and the instruction to answer with the content of its artifact and nothing
@@ -42,8 +52,8 @@ Run these in order. For each one:
 4. Print one line to the user: the phase name, the artifact written, and a
    one-sentence summary of what it found.
 
-| # | Subagent | Reads | Writes |
-|---|----------|-------|--------|
+| # | Phase file in `agents/` | Reads | Writes |
+|---|-------------------------|-------|--------|
 | 1 | `intake-ai` | the task | `spec.md` |
 | 2 | `explore-ai` | the task, `spec.md` | `map.md` |
 | 3 | `plan-ai` | `spec.md`, `map.md` | `plan.md` |
