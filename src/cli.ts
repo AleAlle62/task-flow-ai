@@ -1,23 +1,27 @@
 #!/usr/bin/env node
 
+import { run } from "./commands/run.js";
 import { validate } from "./commands/validate.js";
 import { DEFAULT_PIPELINE } from "./paths.js";
-import { ConfigError, errorMessage } from "./util/guards.js";
 import { ProviderError } from "./providers/index.js";
+import { ConfigError, errorMessage } from "./util/guards.js";
 
-const USAGE = `task-flow-ai — a six-phase agent pipeline you approve from the browser.
+const USAGE = `task-flow-ai — six separate phases, and you approve the plan.
 
 Usage:
   task-flow-ai run "<task>"        Run the pipeline on a task
   task-flow-ai validate [file]     Check a pipeline file and show the flow
-  task-flow-ai --help              Show this message
-  task-flow-ai --version           Show the version
+
+Options for run:
+  --pipeline <file>   Pipeline to use          (default: the packaged one)
+  --provider <name>   Agent to run underneath  (default: the only one installed)
+  --model <name>      Model to ask it for      (default: the provider's own)
+  --cwd <dir>         Project to work on       (default: here)
 `;
 
 const VERSION = "0.1.0";
 
-/** Nothing but dispatch: every command's work lives in commands/. */
-function main(argv: string[]): number {
+async function main(argv: string[]): Promise<number> {
   const command = argv[0];
 
   switch (command) {
@@ -36,8 +40,7 @@ function main(argv: string[]): number {
       return validate(argv[1] ?? DEFAULT_PIPELINE, process.cwd());
 
     case "run":
-      process.stderr.write("`run` is not implemented yet.\n");
-      return 1;
+      return await run(argv.slice(1));
 
     default:
       process.stderr.write(`unknown command: ${command}\n\n${USAGE}`);
@@ -49,12 +52,12 @@ function main(argv: string[]): number {
  * A wrong file or an unusable provider is something the person can fix, and
  * they get a plain message. Anything else is our bug, and keeps its stack trace.
  */
-try {
-  process.exit(main(process.argv.slice(2)));
-} catch (err) {
-  if (err instanceof ConfigError || err instanceof ProviderError) {
-    process.stderr.write(`\n${errorMessage(err)}\n`);
-    process.exit(1);
-  }
-  throw err;
-}
+main(process.argv.slice(2))
+  .then((code) => process.exit(code))
+  .catch((err: unknown) => {
+    if (err instanceof ConfigError || err instanceof ProviderError) {
+      process.stderr.write(`\n${errorMessage(err)}\n`);
+      process.exit(1);
+    }
+    throw err;
+  });

@@ -14,7 +14,11 @@ export interface PhaseRecord {
   error?: string;
 }
 
-export type RunStatus = "running" | "done" | "failed";
+/**
+ * "stopped" is a person rejecting a plan. It is an outcome, not a failure —
+ * the pipeline did exactly what it exists to do.
+ */
+export type RunStatus = "running" | "done" | "failed" | "stopped";
 
 /**
  * The contents of `run.json`: enough to reread a run tomorrow, and enough to
