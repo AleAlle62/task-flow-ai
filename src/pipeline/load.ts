@@ -8,15 +8,15 @@ import { checkAll } from "./rules.js";
 import { readPipelineSpec, type PhaseSpec } from "./schema.js";
 
 /**
- * Reading a pipeline is three steps, in this order and no other:
+ * The only way into a pipeline, in four steps and no other order:
  *
  *   1. read the file      →  raw YAML
  *   2. shape it           →  schema.ts, which knows types but not meaning
  *   3. attach the agents  →  each phase's real tools come from agents/<id>.md
  *   4. check the rules    →  rules.ts, which knows meaning but reads nothing
  *
- * Step 3 sits between the two on purpose: the rules need the agent files to
- * decide who is allowed to write, and that answer must not come from the YAML.
+ * Step 3 sits between the other two on purpose: the rules need the agent files
+ * to decide who may write, and that answer must never come from the YAML.
  */
 export function loadPipeline(file: string, projectDir: string): Pipeline {
   const spec = readPipelineSpec(readYamlFile(file), file);

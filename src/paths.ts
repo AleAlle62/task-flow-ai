@@ -11,7 +11,7 @@ export const DEFAULT_PIPELINE = path.join(packageRoot, "pipelines", "default.yam
 
 export const PACKAGED_AGENTS_DIR = path.join(packageRoot, "agents");
 
-/** A project overrides a phase by putting its own copy here. */
+/** Where a project puts its own copy of a phase, to override the packaged one. */
 export function projectAgentsDir(projectDir: string): string {
   return path.join(projectDir, ".taskflow", "agents");
 }

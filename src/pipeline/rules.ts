@@ -2,10 +2,10 @@ import { COMPUTED_INPUTS, GATE_INPUT_PREFIX, type Phase } from "../model/types.j
 import { ConfigError } from "../util/guards.js";
 
 /**
- * Whether the pipeline makes sense as a whole. One exported function per rule,
- * each answering a question a person would ask when reading the file out loud.
+ * Whether a pipeline makes sense as a whole. One function per rule, each
+ * answering a question a person would ask reading the file out loud. Nothing
+ * here opens a file: the phases arrive ready.
  */
-
 export function checkAll(phases: Phase[], file: string): void {
   checkIdsAreUnique(phases, file);
   checkInputsArePreviouslyProduced(phases, file);
@@ -16,6 +16,7 @@ export function checkAll(phases: Phase[], file: string): void {
 /** "Do two phases share a name?" */
 function checkIdsAreUnique(phases: Phase[], file: string): void {
   const seen = new Set<string>();
+
   for (const phase of phases) {
     if (seen.has(phase.id)) {
       throw new ConfigError(`${file}: duplicate phase id "${phase.id}"`);
@@ -24,7 +25,7 @@ function checkIdsAreUnique(phases: Phase[], file: string): void {
   }
 }
 
-/** "Does every phase get handed something that actually exists by then?" */
+/** "Is every phase handed something that actually exists by the time it runs?" */
 function checkInputsArePreviouslyProduced(phases: Phase[], file: string): void {
   const produced = new Set<string>();
 
@@ -48,6 +49,7 @@ function checkFindingsTargetsExist(phases: Phase[], file: string): void {
 
   for (const phase of phases) {
     const target = phase.findingsPolicy?.goto;
+
     if (target && !ids.has(target)) {
       throw new ConfigError(
         `${file}: phase "${phase.id}" sends work back to "${target}", which is not a phase`,
@@ -73,6 +75,7 @@ function checkExactlyOnePhaseWrites(phases: Phase[], file: string): void {
 
   if (writers.length > 1) {
     const named = writers.map((phase) => `${phase.id} (${phase.agent.file})`).join("\n  ");
+
     throw new ConfigError(
       `${file}: ${writers.length} phases can write to your code:\n  ${named}\n` +
         `Exactly one may — that is the security boundary of this tool. Remove Write/Edit from the "tools" line of the others.`,

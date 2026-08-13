@@ -1,13 +1,12 @@
+/** The two halves of a markdown file that opens with a `---` block. */
 export interface Frontmatter {
-  /** The YAML text between the two `---` markers. */
   header: string;
-  /** Everything after them. */
   body: string;
 }
 
 /**
- * Splits a markdown file that opens with a `---` block. Returns undefined when
- * the file has no frontmatter at all, which callers report as a real error
+ * Splits a markdown file into its frontmatter and its text. Returns undefined
+ * when there is no frontmatter at all, which callers report as a real error
  * rather than guessing at defaults.
  */
 export function splitFrontmatter(raw: string): Frontmatter | undefined {
@@ -18,12 +17,12 @@ export function splitFrontmatter(raw: string): Frontmatter | undefined {
   if (closing === -1) return undefined;
 
   const firstLineEnd = text.indexOf("\n");
-  const header = text.slice(firstLineEnd + 1, closing);
-
   const afterClosing = text.indexOf("\n", closing + 1);
-  const body = afterClosing === -1 ? "" : text.slice(afterClosing + 1);
 
-  return { header, body };
+  return {
+    header: text.slice(firstLineEnd + 1, closing),
+    body: afterClosing === -1 ? "" : text.slice(afterClosing + 1),
+  };
 }
 
 function stripBom(text: string): string {

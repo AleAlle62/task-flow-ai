@@ -3,6 +3,7 @@
 import { validate } from "./commands/validate.js";
 import { DEFAULT_PIPELINE } from "./paths.js";
 import { ConfigError, errorMessage } from "./util/guards.js";
+import { ProviderError } from "./providers/index.js";
 
 const USAGE = `task-flow-ai — a six-phase agent pipeline you approve from the browser.
 
@@ -44,12 +45,14 @@ function main(argv: string[]): number {
   }
 }
 
+/**
+ * A wrong file or an unusable provider is something the person can fix, and
+ * they get a plain message. Anything else is our bug, and keeps its stack trace.
+ */
 try {
   process.exit(main(process.argv.slice(2)));
 } catch (err) {
-  // A ConfigError is the user's file being wrong, and they should see it as a
-  // plain message. Anything else is our bug, and deserves its stack trace.
-  if (err instanceof ConfigError) {
+  if (err instanceof ConfigError || err instanceof ProviderError) {
     process.stderr.write(`\n${errorMessage(err)}\n`);
     process.exit(1);
   }

@@ -1,4 +1,4 @@
-/** Small helpers for walking data that came from a file and could be anything. */
+/** Helpers for walking data that came from a file and could be anything. */
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -18,8 +18,8 @@ export function errorMessage(err: unknown): string {
 }
 
 /**
- * Every failure the user can cause by editing a file is thrown as this, so the
- * CLI can print it plainly instead of a stack trace.
+ * Every failure a user can cause by editing a file is thrown as this, so the
+ * CLI can print it as a plain message instead of a stack trace.
  */
 export class ConfigError extends Error {
   constructor(message: string) {

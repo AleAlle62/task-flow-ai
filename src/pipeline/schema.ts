@@ -2,9 +2,9 @@ import type { FindingsPolicy, Gate } from "../model/types.js";
 import { ConfigError, asNumber, asStringArray, isRecord } from "../util/guards.js";
 
 /**
- * Shape only: turns the raw YAML into typed pieces, and complains when a field
- * is the wrong kind of thing. It knows nothing about whether the pipeline makes
- * sense as a whole — that is `rules.ts`.
+ * Shape only: turns raw YAML into typed pieces and complains when a field is
+ * the wrong kind of thing. It knows types, not meaning — whether the pipeline
+ * makes sense as a whole is `rules.ts`.
  */
 
 /** A phase as written in the file, before its agent has been loaded. */
@@ -25,6 +25,10 @@ export interface PipelineSpec {
 
 const PHASE_ID = /^[a-z0-9][a-z0-9_-]*$/;
 
+const DEFAULT_TIMEOUT_SECONDS = 600;
+
+const DEFAULT_MAX_LOOPS = 2;
+
 export function readPipelineSpec(raw: unknown, file: string): PipelineSpec {
   if (!isRecord(raw)) {
     throw new ConfigError(`${file}: expected a YAML mapping at the top level`);
@@ -38,7 +42,7 @@ export function readPipelineSpec(raw: unknown, file: string): PipelineSpec {
   }
 
   return {
-    timeout: asNumber(defaults["timeout"], 600),
+    timeout: asNumber(defaults["timeout"], DEFAULT_TIMEOUT_SECONDS),
     writePaths: asStringArray(raw["write_paths"]) ?? ["**"],
     phases: phases.map((entry, index) => readPhase(entry, index, file)),
   };
@@ -46,9 +50,11 @@ export function readPipelineSpec(raw: unknown, file: string): PipelineSpec {
 
 function readPhase(raw: unknown, index: number, file: string): PhaseSpec {
   const position = `${file}: phase #${index + 1}`;
+
   if (!isRecord(raw)) throw new ConfigError(`${position}: expected a mapping`);
 
   const id = raw["id"];
+
   if (typeof id !== "string" || !PHASE_ID.test(id)) {
     throw new ConfigError(
       `${position}: "id" is required — lowercase letters, digits, "-" or "_". It is also the name of the file in agents/.`,
@@ -72,25 +78,33 @@ function readPhase(raw: unknown, index: number, file: string): PhaseSpec {
   return phase;
 }
 
+/**
+ * An output is a plain file name: artifacts live in the run directory and
+ * nowhere else, so a path here would be a way out of it.
+ */
 function readOutput(raw: unknown, id: string, file: string): string {
   if (typeof raw !== "string" || raw.trim() === "") {
     throw new ConfigError(`${file}: phase "${id}": "output" is required`);
   }
+
   if (raw.includes("/") || raw.includes("..")) {
     throw new ConfigError(
       `${file}: phase "${id}": "output" must be a plain file name inside the run directory`,
     );
   }
+
   return raw;
 }
 
 function readGate(raw: unknown, id: string, file: string): Gate | undefined {
   if (raw === undefined) return undefined;
+
   if (!isRecord(raw)) {
     throw new ConfigError(`${file}: phase "${id}": "gate" must be a mapping`);
   }
 
   const options = asStringArray(raw["options"]);
+
   if (!options || options.length < 2) {
     throw new ConfigError(
       `${file}: phase "${id}": a gate needs at least two "options" to choose between`,
@@ -98,9 +112,11 @@ function readGate(raw: unknown, id: string, file: string): Gate | undefined {
   }
 
   const gate: Gate = { options };
+
   if (typeof raw["show"] === "string") gate.show = raw["show"];
 
   const when = raw["when"];
+
   if (when !== undefined) {
     if (when !== "always" && when !== "findings") {
       throw new ConfigError(
@@ -119,11 +135,13 @@ function readFindingsPolicy(
   file: string,
 ): FindingsPolicy | undefined {
   if (raw === undefined) return undefined;
+
   if (!isRecord(raw)) {
     throw new ConfigError(`${file}: phase "${id}": "on_findings" must be a mapping`);
   }
 
   const goto = raw["goto"];
+
   if (typeof goto !== "string") {
     throw new ConfigError(`${file}: phase "${id}": "on_findings.goto" is required`);
   }
@@ -131,6 +149,6 @@ function readFindingsPolicy(
   return {
     severity: asStringArray(raw["severity"]) ?? ["blocking"],
     goto,
-    maxLoops: asNumber(raw["max_loops"], 2),
+    maxLoops: asNumber(raw["max_loops"], DEFAULT_MAX_LOOPS),
   };
 }

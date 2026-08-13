@@ -7,30 +7,24 @@ import { loadPipeline } from "../pipeline/load.js";
  * spending anything.
  */
 export function validate(file: string, projectDir: string): number {
-  const pipeline = loadPipeline(file, projectDir);
-  print(pipeline);
+  print(loadPipeline(file, projectDir));
   return 0;
 }
 
 function print(pipeline: Pipeline): void {
-  const lines: string[] = [
+  const writers = pipeline.phases.filter((phase) => phase.canWrite).length;
+
+  const lines = [
     pipeline.source,
     "",
     `timeout   ${pipeline.defaults.timeout}s per phase`,
     `writable  ${pipeline.writePaths.join(", ")}`,
     "",
-  ];
-
-  for (const phase of pipeline.phases) {
-    lines.push(...describe(phase));
-  }
-
-  const writers = pipeline.phases.filter((phase) => phase.canWrite).length;
-  lines.push(
+    ...pipeline.phases.flatMap(describe),
     "",
     `${pipeline.phases.length} phases, ${writers} of which can touch your code.`,
     "",
-  );
+  ];
 
   process.stdout.write(lines.join("\n"));
 }
@@ -44,6 +38,7 @@ function describe(phase: Phase): string[] {
   if (phase.gate) {
     lines.push(`          stops for you: ${phase.gate.options.join(" / ")}`);
   }
+
   if (phase.findingsPolicy) {
     const { goto, maxLoops } = phase.findingsPolicy;
     lines.push(`          findings go back to ${goto}, max ${maxLoops}`);
