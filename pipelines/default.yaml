@@ -5,8 +5,8 @@
 #
 # It deliberately says nothing about which agent, provider or model runs
 # underneath. Those belong to whoever is running the pipeline, not to the
-# pipeline itself — the same six phases in the same order should hold whether
-# there is Claude, Codex or a raw API key below them.
+# pipeline itself — the same six phases in the same order hold whatever is
+# below them.
 #
 #   - the provider comes from --provider or your own configuration
 #   - the model comes from --model or the provider's own default

@@ -11,9 +11,10 @@ import { splitFrontmatter } from "../util/frontmatter.js";
 const WRITING_TOOLS = new Set(["Write", "Edit", "NotebookEdit"]);
 
 /**
- * Reads a phase file: the same markdown Claude Code loads as an agent, with
- * frontmatter on top and instructions below. One file, two readers — the CLI
- * takes the body as the system prompt and the frontmatter as the tool list.
+ * Reads a phase file: frontmatter on top, instructions below. The format is
+ * plain markdown on purpose, so the same file can be read by this tool and by
+ * any agent that loads markdown definitions — the body becomes the system
+ * prompt, the frontmatter declares the tools.
  */
 export function loadAgent(projectDir: string, id: string): Agent {
   const file = resolveAgentFile(projectDir, id);
@@ -74,7 +75,7 @@ function parseHeader(header: string, file: string): Record<string, unknown> {
   return parsed;
 }
 
-/** Claude Code writes tools as a comma-separated string; a YAML list also works. */
+/** Accepts both spellings found in the wild: a comma-separated string or a list. */
 function parseTools(raw: unknown, file: string): string[] {
   const items =
     typeof raw === "string" ? raw.split(",") : Array.isArray(raw) ? raw.map(String) : undefined;

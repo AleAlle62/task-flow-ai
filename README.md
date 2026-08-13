@@ -18,25 +18,45 @@ it wrote down, and hands you the plan before a single line of code is touched.
 Every phase leaves its artifact on disk in `.taskflow/runs/<id>/`. A run is
 readable afterwards, argued with, and reused.
 
+## Nothing here is tied to one agent
+
+The six phases are six markdown files. The flow is one YAML file. Neither
+mentions a vendor, a model or a product — they describe what has to happen, and
+in what order.
+
+Everything specific to a particular agent lives in exactly two places, and both
+are additive: one adapter file per agent, and one install manifest per agent.
+Adding support for another means adding those two files. It never means
+changing a phase, the flow, or the code that runs them.
+
+```
+agents/*.md          the six phases          ← no vendor anywhere
+pipelines/*.yaml     the flow                ← no vendor anywhere
+src/                 the engine              ← no vendor anywhere
+src/providers/       one file per agent      ← vendor lives only here
+```
+
 ## Status
 
-This project is being built in the open. Here is exactly where it is:
+Built in the open. Here is exactly where it is:
 
 | | | |
 |---|---|---|
-| Six-phase pipeline as a Claude Code skill | **working** | install it below |
+| Six-phase pipeline, artifacts on disk | **working** | |
 | Plan approval before any code is written | **working** | asked in chat |
-| Artifacts on disk, one per phase | **working** | `.taskflow/runs/<id>/` |
 | Correction loop, review back to implement | **working** | max two rounds |
+| Runs inside Claude Code, as a skill | **working** | the first agent supported |
+| Runs standalone, as a CLI | in progress | loads and validates; cannot run a task yet |
+| Runs inside Cursor, Gemini CLI, others | not yet | see *Adding your agent* below |
 | Approve the plan from a browser dashboard | planned | the reason this project exists |
-| Standalone CLI, no Claude Code needed | planned | scaffolded, not usable yet |
-| Other agents underneath (Codex, API) | planned | nothing built, nothing promised |
-| Enforced write permissions | planned | today it is instruction, not enforcement |
+| Write permissions enforced, not requested | partly | enforced by the CLI, asked of a skill |
 
-Nothing in the "planned" rows works today. They are here so you know where this
-is going, not to suggest you can use them.
+Rows that do not say **working** do not work yet. They are listed so you know
+where this is going, not to suggest you can use them.
 
 ## Install
+
+### Inside Claude Code
 
 ```bash
 claude plugin marketplace add AleAlle62/task-flow-ai
@@ -47,6 +67,21 @@ Restart your session, then:
 
 ```
 /task-flow-ai fix the empty cart bug
+```
+
+### Inside another agent
+
+Not supported yet — not because it is hard, but because this project does not
+announce an agent it has not actually run. If you use one, see *Adding your
+agent*.
+
+### As a standalone CLI
+
+Not usable yet. When it is, it will run the same six phases against whichever
+agent you point it at, with no chat and no editor involved:
+
+```bash
+task-flow-ai run "fix the empty cart bug"
 ```
 
 ## What happens
@@ -64,6 +99,21 @@ Restart your session, then:
    complexity. Blocking findings send the work back — at most twice.
 7. **security** checks the diff for vulnerabilities the change introduced.
 
+## Who is allowed to write
+
+Exactly one phase. It is declared in `agents/implement-ai.md`, on the `tools`
+line, and the tool refuses to start if a second phase has a writing tool.
+
+How strongly that is held depends on what is underneath:
+
+- **The CLI** launches each phase without the writing tools existing at all. A
+  read-only phase has no way to write, whatever it decides to do.
+- **A skill** asks the host agent to respect it. Hosts generally do, but it is
+  an instruction rather than a wall.
+- **An agent that cannot restrict tools** makes the pipeline run read-only: the
+  writing phase is skipped and you are told why. You still get the
+  specification, the map, the plan and the review.
+
 ## Make it yours
 
 The six phases are six markdown files in [`agents/`](agents/). They are the
@@ -71,18 +121,24 @@ whole product — the code around them just puts them in order.
 
 Do not like how the review phase judges severity? Edit
 [`agents/review-ai.md`](agents/review-ai.md). Want a seventh phase for
-performance? Write `agents/perf-ai.md` and add it to the list in
-[`SKILL.md`](skills/task-flow-ai/SKILL.md).
+performance? Write `agents/perf-ai.md` and add five lines to
+[`pipelines/default.yaml`](pipelines/default.yaml). No code changes either way.
 
-## Why the browser matters
+Any project can override a phase for itself by dropping its own copy in
+`.taskflow/agents/<id>.md`.
 
-The plan approval currently happens in chat, which works but keeps you watching
-a terminal. The point of this project is that you get asked in a browser page
-instead: the pipeline runs, and when it needs you, a page shows you the plan and
-waits. You approve from anywhere, and the phases behave identically no matter
-which agent is underneath.
+## Adding your agent
 
-That part is not built yet. It is next.
+Two files, and nothing else in the repository changes:
+
+1. **An adapter** in `src/providers/`, implementing the contract in
+   [`src/providers/types.ts`](src/providers/types.ts): run a phase, return its
+   text, and say whether you can enforce the tool list.
+2. **An install manifest** for that agent, alongside the existing
+   `.claude-plugin/`.
+
+One rule, and it is not negotiable: an agent is only listed once someone has
+run the whole pipeline on it for real.
 
 ## License
 
