@@ -18,6 +18,8 @@ Options for run:
   --model <name>      Model to ask it for      (default: the provider's own)
   --cwd <dir>         Project to work on       (default: here)
   --resume <id|last>  Continue an interrupted run instead of starting one
+  --port <n>          Dashboard port          (default: 4179)
+  --no-web true       Ask in the terminal instead of opening a browser
 `;
 
 const VERSION = "0.1.0";

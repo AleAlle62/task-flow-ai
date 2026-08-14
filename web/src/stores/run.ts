@@ -26,6 +26,11 @@ export const useRunStore = defineStore("run", () => {
 
   const phases = computed(() => run.value?.phases ?? []);
 
+  /** The phase working right now, if any. Drives the "what is happening" line. */
+  const activePhase = computed(() => phases.value.find((phase) => phase.status === "running"));
+
+  const lastEvent = computed(() => events.value[events.value.length - 1]);
+
   const isWaiting = computed(() => gate.value !== null);
 
   const isOver = computed(
@@ -67,5 +72,19 @@ export const useRunStore = defineStore("run", () => {
     return accepted;
   }
 
-  return { run, events, gate, error, phases, isWaiting, isOver, connect, disconnect, decide, refresh };
+  return {
+    run,
+    events,
+    gate,
+    error,
+    phases,
+    activePhase,
+    lastEvent,
+    isWaiting,
+    isOver,
+    connect,
+    disconnect,
+    decide,
+    refresh,
+  };
 });

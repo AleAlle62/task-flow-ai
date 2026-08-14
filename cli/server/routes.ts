@@ -4,12 +4,12 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { RunStore } from "../run/store/store.js";
 import { streamEvents } from "./event-stream.js";
-import type { GateBridge } from "./pending-gate.js";
+import type { BrowserAsker } from "./browser-asker.js";
 import { tokenMatches } from "./token.js";
 
 export interface RouteContext {
   store: RunStore;
-  gate: GateBridge;
+  asker: BrowserAsker;
   token: string;
   webRoot: string;
 }
@@ -34,7 +34,7 @@ export async function handle(
       return send(response, 200, context.store.current);
 
     case "GET /api/gate":
-      return send(response, 200, context.gate.question ?? null);
+      return send(response, 200, context.asker.question ?? null);
 
     case "GET /api/events":
       streamEvents(path.join(context.store.dir, "events.jsonl"), response);
@@ -85,7 +85,7 @@ async function answerGate(
   const approved = body["approved"] === true;
   const note = typeof body["note"] === "string" ? body["note"] : "";
 
-  const accepted = context.gate.answer(approved, note);
+  const accepted = context.asker.answer(approved, note);
 
   send(response, accepted ? 200 : 409, { accepted });
 }

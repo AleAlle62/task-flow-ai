@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref } from "vue";
 import ArtifactPanel from "@/components/ArtifactPanel.vue";
 import EventLog from "@/components/EventLog.vue";
 import GatePanel from "@/components/GatePanel.vue";
+import NowLine from "@/components/NowLine.vue";
 import PhaseFlow from "@/components/PhaseFlow.vue";
 import { useRunStore } from "@/stores/run";
 
@@ -14,9 +15,8 @@ onMounted(() => store.connect());
 onUnmounted(() => store.disconnect());
 
 /**
- * A rejected answer means the run had already moved on — the page was showing a
- * question nobody is waiting on any more. Saying so is better than pretending
- * the click worked.
+ * A refused answer means the run had already moved on — this page was showing a
+ * question nobody is waiting on any more. Saying so beats pretending it worked.
  */
 async function decide(approved: boolean, note: string): Promise<void> {
   stale.value = !(await store.decide(approved, note));
@@ -28,17 +28,22 @@ async function decide(approved: boolean, note: string): Promise<void> {
     <header class="top">
       <h1>{{ store.run?.task ?? "…" }}</h1>
       <p class="where">
-        <span :class="['status', store.run?.status]">{{ store.run?.status ?? "connecting" }}</span>
-        <span v-if="store.run">· {{ store.run.id }}</span>
+        <span v-if="store.run">{{ store.run.id }}</span>
         <span v-if="store.run && store.run.totalCostUsd > 0">
           · ${{ store.run.totalCostUsd.toFixed(4) }}
         </span>
       </p>
     </header>
 
-    <p v-if="store.error" class="error">{{ store.error }}</p>
-
     <PhaseFlow :phases="store.phases" :waiting-on="store.gate?.phase" />
+
+    <NowLine
+      :status="store.run?.status"
+      :active="store.activePhase"
+      :waiting-on="store.gate?.phase"
+    />
+
+    <p v-if="store.error" class="error">{{ store.error }}</p>
 
     <GatePanel v-if="store.gate" :gate="store.gate" @decide="decide" />
 
@@ -61,7 +66,7 @@ main {
   margin: 0 auto;
   padding: 34px 24px 60px;
   display: grid;
-  gap: 22px;
+  gap: 20px;
 }
 
 h1 {
@@ -79,27 +84,6 @@ h1 {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.status {
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-
-.status.running {
-  color: var(--accent);
-}
-
-.status.done {
-  color: var(--green);
-}
-
-.status.failed {
-  color: var(--red);
-}
-
-.status.stopped {
-  color: var(--amber);
 }
 
 .error {

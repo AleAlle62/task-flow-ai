@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { packageRoot } from "../paths.js";
 import type { RunStore } from "../run/store/store.js";
-import { GateBridge } from "./pending-gate.js";
+import { BrowserAsker } from "./browser-asker.js";
 import { handle } from "./routes.js";
 import { newToken } from "./token.js";
 
@@ -13,8 +13,8 @@ const WEB_ROOT = path.join(packageRoot, "web-dist");
 export interface Dashboard {
   /** The address to open, token included. */
   url: string;
-  /** Where a waiting run parks its question until someone answers it. */
-  gate: GateBridge;
+  /** The thing a waiting run asks its questions through. */
+  asker: BrowserAsker;
   close: () => Promise<void>;
 }
 
@@ -27,30 +27,36 @@ export interface Dashboard {
  */
 export function startDashboard(store: RunStore, port: number): Promise<Dashboard> {
   const token = newToken();
-  const gate = new GateBridge();
-
-  const server = createServer((request, response) => {
-    handle(request, response, { store, gate, token, webRoot: WEB_ROOT }).catch(() => {
-      response.writeHead(500, { "content-type": "application/json" });
-      response.end(`{"error":"internal"}`);
-    });
-  });
 
   return new Promise<Dashboard>((resolve, reject) => {
+    let asker: BrowserAsker | undefined;
+
+    const server = createServer((request, response) => {
+      handle(request, response, {
+        store,
+        asker: asker as BrowserAsker,
+        token,
+        webRoot: WEB_ROOT,
+      }).catch(() => {
+        response.writeHead(500, { "content-type": "application/json" });
+        response.end(`{"error":"internal"}`);
+      });
+    });
+
     server.once("error", reject);
 
     server.listen(port, "127.0.0.1", () => {
-      resolve({
-        url: `http://127.0.0.1:${actualPort(server, port)}/?t=${token}`,
-        gate,
-        close: () => closeServer(server),
-      });
+      const url = `http://127.0.0.1:${actualPort(server, port)}/?t=${token}`;
+      asker = new BrowserAsker(url);
+
+      resolve({ url, asker, close: () => closeServer(server) });
     });
   });
 }
 
 function actualPort(server: Server, requested: number): number {
   const address = server.address();
+
   return typeof address === "object" && address !== null ? address.port : requested;
 }
 

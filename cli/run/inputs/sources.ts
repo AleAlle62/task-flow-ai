@@ -1,6 +1,6 @@
 import { GATE_INPUT_PREFIX, type Phase } from "../../model/types.js";
 import { ConfigError } from "../../util/guards.js";
-import { gateRecordName } from "../gates/prompt.js";
+import { gateRecordName } from "../gates/policy.js";
 import { currentDiff } from "./git-diff.js";
 import type { RunStore } from "../store/store.js";
 

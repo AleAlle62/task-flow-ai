@@ -1,6 +1,6 @@
 import type { Phase } from "../../model/types.js";
 import type { RunContext } from "../context.js";
-import { ask, gateRecordName, shouldStop } from "./prompt.js";
+import { gateRecordName, shouldStop } from "./policy.js";
 
 export type GateOutcome = "continue" | "stopped";
 
@@ -8,8 +8,8 @@ export type GateOutcome = "continue" | "stopped";
  * The one place a run waits for a person, and the point of the whole tool.
  *
  * A resumed run never asks twice: an answer already on disk is the answer,
- * because being asked again to approve something you approved yesterday is how
- * people learn to hit yes without reading.
+ * because being asked again to approve what you approved yesterday is how
+ * people learn to click yes without reading.
  */
 export async function passGate(
   phase: Phase,
@@ -28,9 +28,15 @@ export async function passGate(
       : "stopped";
   }
 
-  store.events.append("gate_opened", { phase: phase.id });
+  store.events.append("gate_opened", { phase: phase.id, artifact: phase.output });
 
-  const answer = await ask(gate, artifact);
+  const answer = await context.asker.ask({
+    phase: phase.id,
+    artifact: phase.output,
+    text: artifact,
+    options: gate.options,
+  });
+
   const decision = answer.approved ? gate.options[0] : gate.options[1];
 
   store.writeArtifact(record, `# ${decision}\n\n${answer.note || "(no note)"}\n`);
@@ -39,6 +45,7 @@ export async function passGate(
   if (answer.approved) return "continue";
 
   store.finish("stopped");
+
   return "stopped";
 }
 

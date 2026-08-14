@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { fetchArtifact } from "@/api/client";
 import type { PhaseRecord } from "@/api/types";
+import MarkdownView from "@/components/MarkdownView.vue";
 
 const props = defineProps<{ phases: PhaseRecord[] }>();
 
 const selected = ref<string | undefined>();
 const text = ref("");
 const failed = ref(false);
+const raw = ref(false);
 
 /** Only phases that finished have something to read. */
-function readable(): PhaseRecord[] {
-  return props.phases.filter((phase) => phase.status === "done");
-}
+const readable = computed(() => props.phases.filter((phase) => phase.status === "done"));
 
 async function show(name: string): Promise<void> {
   selected.value = name;
@@ -27,34 +27,56 @@ async function show(name: string): Promise<void> {
   }
 }
 
+/**
+ * Follows the run: the newest finished artifact is what you want to see, unless
+ * you have already picked one yourself.
+ */
+const touched = ref(false);
+
 watch(
-  () => readable().map((phase) => phase.output).join(),
+  () => readable.value.map((phase) => phase.output).join(),
   (outputs) => {
-    if (selected.value === undefined && outputs !== "") {
-      void show(readable()[0]!.output);
-    }
+    if (outputs === "") return;
+
+    const latest = readable.value[readable.value.length - 1]!.output;
+
+    if (!touched.value) void show(latest);
+    else if (selected.value && !outputs.includes(selected.value)) void show(latest);
   },
   { immediate: true },
 );
+
+function pick(name: string): void {
+  touched.value = true;
+  void show(name);
+}
 </script>
 
 <template>
   <section class="artifacts">
     <nav>
       <button
-        v-for="phase in readable()"
+        v-for="phase in readable"
         :key="phase.output"
         class="tab"
         :class="{ on: phase.output === selected }"
-        @click="show(phase.output)"
+        @click="pick(phase.output)"
       >
         {{ phase.output }}
       </button>
+
+      <button v-if="text" class="tab raw" @click="raw = !raw">
+        {{ raw ? "rendered" : "source" }}
+      </button>
     </nav>
 
-    <pre v-if="text" class="body">{{ text }}</pre>
+    <div v-if="text" class="body">
+      <pre v-if="raw">{{ text }}</pre>
+      <MarkdownView v-else :source="text" />
+    </div>
+
     <p v-else-if="failed" class="empty">That artifact could not be read.</p>
-    <p v-else class="empty">Nothing has been written yet.</p>
+    <p v-else class="empty">No phase has finished yet.</p>
   </section>
 </template>
 
@@ -83,11 +105,17 @@ nav {
   color: var(--accent);
 }
 
+.raw {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 11px;
+}
+
 .body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 15px 17px;
+  padding: 16px 19px;
   overflow: auto;
   max-height: 52vh;
 }
