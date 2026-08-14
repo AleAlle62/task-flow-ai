@@ -30,11 +30,17 @@ Adding support for another means adding those two files. It never means
 changing a phase, the flow, or the code that runs them.
 
 ```
-agents/*.md          the six phases          ← no vendor anywhere
-pipelines/*.yaml     the flow                ← no vendor anywhere
-src/                 the engine              ← no vendor anywhere
-src/providers/       one file per agent      ← vendor lives only here
+agents/*.md          the six phases     ← shared, and where the product actually is
+pipelines/*.yaml     the flow           ← shared
+
+cli/                 the engine         ← no vendor anywhere
+cli/providers/       one file per agent ← vendor lives only here
+web/                 the dashboard      ← Vue, talks to the CLI over HTTP only
+skills/              the skill
 ```
+
+The three ways to run it sit side by side and share the two folders above them.
+Nothing in `agents/` or `pipelines/` knows which one is executing it.
 
 ## Status
 

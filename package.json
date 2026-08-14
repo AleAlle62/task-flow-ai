@@ -23,7 +23,7 @@
     "build": "npm run build:cli && npm run build:web",
     "build:cli": "tsc",
     "build:web": "npm run build --workspace @task-flow-ai/web",
-    "dev": "tsx src/cli.ts",
+    "dev": "tsx cli/cli.ts",
     "dev:web": "npm run dev --workspace @task-flow-ai/web",
     "typecheck": "tsc --noEmit && npm run typecheck --workspace @task-flow-ai/web"
   },
