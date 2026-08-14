@@ -28,7 +28,13 @@ export class RunStore {
     this.events = new EventLog(path.join(dir, "events.jsonl"), state.id);
   }
 
-  static create(options: { projectDir: string; task: string; pipeline: string }): RunStore {
+  static create(options: {
+    projectDir: string;
+    task: string;
+    pipeline: string;
+    /** The phases the run means to reach, in order, so it can be drawn at once. */
+    phases: { id: string; output: string }[];
+  }): RunStore {
     const id = newRunId();
     const dir = files.createRunDirectory(options.projectDir, id);
 
@@ -40,7 +46,7 @@ export class RunStore {
       status: "running",
       startedAt: new Date().toISOString(),
       totalCostUsd: 0,
-      phases: [],
+      phases: options.phases.map((phase) => records.planned(phase.id, phase.output)),
     });
 
     store.writeArtifact("task.md", options.task);

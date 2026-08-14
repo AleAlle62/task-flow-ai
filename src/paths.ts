@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
  * Where the packaged files live, whether we run from `dist/` after a build or
  * straight from `src/` under tsx. Both sit one level below the package root.
  */
-const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+export const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export const DEFAULT_PIPELINE = path.join(packageRoot, "pipelines", "default.yaml");
 

@@ -3,3 +3,4 @@ dist/
 .taskflow/
 *.tsbuildinfo
 .DS_Store
+web-dist/

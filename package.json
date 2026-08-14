@@ -9,16 +9,23 @@
   },
   "files": [
     "dist",
+    "web-dist",
     "pipelines",
-    "prompts"
+    "agents"
   ],
   "engines": {
     "node": ">=20"
   },
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:cli && npm run build:web",
+    "build:cli": "tsc",
+    "build:web": "npm run build --workspace @task-flow-ai/web",
     "dev": "tsx src/cli.ts",
-    "typecheck": "tsc --noEmit"
+    "dev:web": "npm run dev --workspace @task-flow-ai/web",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace @task-flow-ai/web"
   },
   "dependencies": {
     "yaml": "^2.6.1"

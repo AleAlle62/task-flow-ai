@@ -33,6 +33,7 @@ export async function run(argv: string[]): Promise<number> {
         projectDir,
         task: requireTask(positional),
         pipeline: pipeline.source,
+        phases: pipeline.phases.map(({ id, output }) => ({ id, output })),
       });
 
   announce(store, provider.id, resumeId !== undefined);
