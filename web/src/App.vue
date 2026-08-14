@@ -6,6 +6,7 @@ import EventLog from "@/components/EventLog.vue";
 import GatePanel from "@/components/GatePanel.vue";
 import NowLine from "@/components/NowLine.vue";
 import PhaseFlow from "@/components/PhaseFlow.vue";
+import TaskForm from "@/components/TaskForm.vue";
 import { useRunStore } from "@/stores/run";
 
 const store = useRunStore();
@@ -26,7 +27,7 @@ async function decide(approved: boolean, note: string): Promise<void> {
 <template>
   <main>
     <header class="top">
-      <h1>{{ store.run?.task ?? "…" }}</h1>
+      <h1>{{ store.run?.task ?? "task-flow-ai" }}</h1>
       <p class="where">
         <span v-if="store.run">{{ store.run.id }}</span>
         <span v-if="store.run && store.run.totalCostUsd > 0">
@@ -35,13 +36,17 @@ async function decide(approved: boolean, note: string): Promise<void> {
       </p>
     </header>
 
-    <PhaseFlow :phases="store.phases" :waiting-on="store.gate?.phase" />
+    <TaskForm v-if="!store.run && store.needsTask" @submit="store.start" />
 
-    <NowLine
-      :status="store.run?.status"
-      :active="store.activePhase"
-      :waiting-on="store.gate?.phase"
-    />
+    <template v-if="store.run">
+      <PhaseFlow :phases="store.phases" :waiting-on="store.gate?.phase" />
+
+      <NowLine
+        :status="store.run.status"
+        :active="store.activePhase"
+        :waiting-on="store.gate?.phase"
+      />
+    </template>
 
     <p v-if="store.error" class="error">{{ store.error }}</p>
 
@@ -51,9 +56,9 @@ async function decide(approved: boolean, note: string): Promise<void> {
       That question had already been answered — this page was out of date.
     </p>
 
-    <ArtifactPanel :phases="store.phases" />
+    <ArtifactPanel v-if="store.run" :phases="store.phases" />
 
-    <details>
+    <details v-if="store.events.length > 0">
       <summary>Events</summary>
       <EventLog :events="store.events" />
     </details>

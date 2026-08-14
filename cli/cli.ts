@@ -9,7 +9,8 @@ import { ConfigError, errorMessage } from "./util/guards.js";
 const USAGE = `task-flow-ai — six separate phases, and you approve the plan.
 
 Usage:
-  task-flow-ai run "<task>"        Run the pipeline on a task
+  task-flow-ai run [task]          Run the pipeline. Without a task, the
+                                  dashboard asks you for one.
   task-flow-ai validate [file]     Check a pipeline file and show the flow
 
 Options for run:

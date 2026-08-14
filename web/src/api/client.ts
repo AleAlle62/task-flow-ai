@@ -9,8 +9,25 @@ import type { PendingGate, RunEvent, RunState } from "./types";
  */
 const token = new URLSearchParams(window.location.search).get("t") ?? "";
 
-export async function fetchRun(): Promise<RunState> {
-  return getJson<RunState>("/api/run");
+/** Null until the run exists — the page opens before anything is decided. */
+export async function fetchRun(): Promise<RunState | null> {
+  return getJson<RunState | null>("/api/run");
+}
+
+export async function isAwaitingTask(): Promise<boolean> {
+  return (await getJson<{ waiting: boolean }>("/api/task")).waiting;
+}
+
+export async function submitTask(task: string): Promise<boolean> {
+  const response = await fetch(withToken("/api/task"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ task }),
+  });
+
+  const body = (await response.json()) as { accepted?: boolean };
+
+  return body.accepted === true;
 }
 
 export async function fetchGate(): Promise<PendingGate | null> {

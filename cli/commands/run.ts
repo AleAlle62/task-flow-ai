@@ -6,10 +6,11 @@ import { resolveProvider } from "../providers/index.js";
 import { TerminalAsker } from "../run/gates/terminal.js";
 import { runPipeline } from "../run/orchestrator.js";
 import { RunStore } from "../run/store/store.js";
+import { TerminalTaskAsker } from "../run/task-asker.js";
 import { startDashboard, type Dashboard } from "../server/http.js";
-import { openInBrowser } from "../util/open.js";
 import { parseArgs } from "../util/args.js";
 import { ConfigError } from "../util/guards.js";
+import { openInBrowser } from "../util/open.js";
 import { bold, dim, green, line, red } from "../ui.js";
 
 const OPTIONS = ["pipeline", "provider", "model", "cwd", "resume", "port", "no-web"] as const;
@@ -17,11 +18,13 @@ const OPTIONS = ["pipeline", "provider", "model", "cwd", "resume", "port", "no-w
 const DEFAULT_PORT = 4179;
 
 /**
- * Puts the pieces together in the order a run needs them: read the pipeline,
- * check the provider is usable, open a run directory, start the dashboard, then
- * hand over to the orchestrator. Everything knowable in advance is checked
- * before the first phase, so a run never dies four phases in for a fixable
- * reason.
+ * Puts the pieces together in the order a run needs them: check what can be
+ * checked, open the dashboard, find out what the task is, then hand over to the
+ * orchestrator.
+ *
+ * The task can come from the command line, from the page, or from the terminal.
+ * The page is the default because that is where you will be watching anyway,
+ * and typing a paragraph into a shell argument is a poor way to describe a bug.
  */
 export async function run(argv: string[]): Promise<number> {
   const { positional, flags } = parseArgs(argv, OPTIONS);
@@ -32,27 +35,29 @@ export async function run(argv: string[]): Promise<number> {
 
   await provider.preflight();
 
-  const resumeId = resolveResumeId(flags["resume"], projectDir);
-  const store = resumeId
-    ? RunStore.open(projectDir, resumeId)
-    : RunStore.create({
-        projectDir,
-        task: requireTask(positional),
-        pipeline: pipeline.source,
-        phases: pipeline.phases.map(({ id, output }) => ({ id, output })),
-      });
-
-  const dashboard = flags["no-web"] ? undefined : await openDashboard(store, flags["port"]);
-
-  announce(store, provider.id, resumeId !== undefined, dashboard);
+  const dashboard = flags["no-web"] ? undefined : await openDashboard(flags["port"]);
 
   try {
+    const resumeId = resolveResumeId(flags["resume"], projectDir);
+
+    const store = resumeId
+      ? RunStore.open(projectDir, resumeId)
+      : RunStore.create({
+          projectDir,
+          task: await resolveTask(positional, dashboard),
+          pipeline: pipeline.source,
+          phases: pipeline.phases.map(({ id, output }) => ({ id, output })),
+        });
+
+    dashboard?.session.attach(store);
+    announce(store, provider.id, resumeId !== undefined);
+
     const status = await runPipeline({
       pipeline,
       provider,
       store,
       projectDir,
-      asker: dashboard?.asker ?? new TerminalAsker(),
+      asker: dashboard?.prompter ?? new TerminalAsker(),
       resuming: resumeId !== undefined,
       ...(flags["model"] ? { model: flags["model"] } : {}),
     });
@@ -67,17 +72,31 @@ export async function run(argv: string[]): Promise<number> {
   }
 }
 
+/** From the command line if it was given there, otherwise from wherever you are. */
+async function resolveTask(
+  positional: string[],
+  dashboard: Dashboard | undefined,
+): Promise<string> {
+  const typed = positional.join(" ").trim();
+  if (typed !== "") return typed;
+
+  const task = await (dashboard?.prompter ?? new TerminalTaskAsker()).askTask();
+
+  if (task.trim() === "") throw new ConfigError("no task given, so there is nothing to run");
+
+  return task.trim();
+}
+
 /**
  * A busy port is not worth ending a run over: the pipeline still works, it just
  * asks in the terminal instead.
  */
-async function openDashboard(
-  store: RunStore,
-  port: string | undefined,
-): Promise<Dashboard | undefined> {
+async function openDashboard(port: string | undefined): Promise<Dashboard | undefined> {
   try {
-    const dashboard = await startDashboard(store, Number(port ?? DEFAULT_PORT));
+    const dashboard = await startDashboard(Number(port ?? DEFAULT_PORT));
 
+    line();
+    line(dim(`dashboard at ${dashboard.url}`));
     openInBrowser(dashboard.url);
 
     return dashboard;
@@ -87,16 +106,6 @@ async function openDashboard(
 
     return undefined;
   }
-}
-
-function requireTask(positional: string[]): string {
-  const task = positional.join(" ").trim();
-
-  if (task === "") {
-    throw new ConfigError(`nothing to do. Try: task-flow-ai run "fix the empty cart bug"`);
-  }
-
-  return task;
 }
 
 /** `--resume last` picks the most recent run that never reached an end. */
@@ -111,17 +120,10 @@ function resolveResumeId(requested: string | undefined, projectDir: string): str
   return id;
 }
 
-function announce(
-  store: RunStore,
-  providerId: string,
-  resuming: boolean,
-  dashboard: Dashboard | undefined,
-): void {
+function announce(store: RunStore, providerId: string, resuming: boolean): void {
   line();
   line(bold(store.current.task));
   line(dim(`${resuming ? "resuming · " : ""}${providerId} · ${store.dir}`));
-
-  if (dashboard) line(dim(`watching at ${dashboard.url}`));
 }
 
 function summarise(status: string, store: RunStore): void {
@@ -144,4 +146,3 @@ function summarise(status: string, store: RunStore): void {
     line(dim(`resume with: task-flow-ai run --resume ${state.id}`));
   }
 }
-

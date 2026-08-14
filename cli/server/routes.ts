@@ -2,21 +2,20 @@ import fs from "node:fs";
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type { RunStore } from "../run/store/store.js";
 import { streamEvents } from "./event-stream.js";
-import type { BrowserAsker } from "./browser-asker.js";
+import type { Session } from "./session.js";
 import { tokenMatches } from "./token.js";
 
 export interface RouteContext {
-  store: RunStore;
-  asker: BrowserAsker;
+  session: Session;
   token: string;
   webRoot: string;
 }
 
 /**
- * Every request the dashboard makes. Small on purpose: the browser reads the
- * run, follows the events, fetches an artifact, and answers one question.
+ * Every request the dashboard makes. Small on purpose: the page says what to
+ * do, then reads the run, follows the events, opens an artifact, and answers
+ * one question at a time.
  */
 export async function handle(
   request: IncomingMessage,
@@ -29,22 +28,31 @@ export async function handle(
 
   if (!authorised(request, url, context.token)) return send(response, 403, { error: "bad token" });
 
+  const { session } = context;
+
   switch (`${request.method} ${url.pathname}`) {
     case "GET /api/run":
-      return send(response, 200, context.store.current);
+      return send(response, 200, session.store?.current ?? null);
+
+    case "GET /api/task":
+      return send(response, 200, { waiting: session.prompter.awaitingTask });
+
+    case "POST /api/task":
+      return submitTask(request, response, context);
 
     case "GET /api/gate":
-      return send(response, 200, context.asker.question ?? null);
+      return send(response, 200, session.prompter.question ?? null);
+
+    case "POST /api/gate":
+      return answerGate(request, response, context);
 
     case "GET /api/events":
-      streamEvents(path.join(context.store.dir, "events.jsonl"), response);
+      if (!session.store) return send(response, 409, { error: "no run yet" });
+      streamEvents(path.join(session.store.dir, "events.jsonl"), response);
       return;
 
     case "GET /api/artifact":
       return serveArtifact(url.searchParams.get("name"), response, context);
-
-    case "POST /api/gate":
-      return answerGate(request, response, context);
 
     default:
       return send(response, 404, { error: "no such endpoint" });
@@ -65,15 +73,15 @@ function authorised(request: IncomingMessage, url: URL, token: string): boolean 
   return tokenMatches(token, given);
 }
 
-function serveArtifact(name: string | null, response: ServerResponse, context: RouteContext): void {
-  if (!name || name.includes("/") || name.includes("..")) {
-    return send(response, 400, { error: "bad artifact name" });
-  }
+async function submitTask(
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: RouteContext,
+): Promise<void> {
+  const body = await readJson(request);
+  const task = typeof body["task"] === "string" ? body["task"] : "";
 
-  if (!context.store.hasArtifact(name)) return send(response, 404, { error: "no such artifact" });
-
-  response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
-  response.end(context.store.readArtifact(name));
+  send(response, 200, { accepted: context.session.prompter.provideTask(task) });
 }
 
 async function answerGate(
@@ -85,9 +93,22 @@ async function answerGate(
   const approved = body["approved"] === true;
   const note = typeof body["note"] === "string" ? body["note"] : "";
 
-  const accepted = context.asker.answer(approved, note);
+  const accepted = context.session.prompter.answer(approved, note);
 
   send(response, accepted ? 200 : 409, { accepted });
+}
+
+function serveArtifact(name: string | null, response: ServerResponse, context: RouteContext): void {
+  const store = context.session.store;
+
+  if (!name || name.includes("/") || name.includes("..")) {
+    return send(response, 400, { error: "bad artifact name" });
+  }
+
+  if (!store?.hasArtifact(name)) return send(response, 404, { error: "no such artifact" });
+
+  response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+  response.end(store.readArtifact(name));
 }
 
 /** The built Vue app, or a plain message when it has not been built yet. */
@@ -131,6 +152,7 @@ function send(response: ServerResponse, status: number, body: unknown): void {
 
 function header(request: IncomingMessage, name: string): string | undefined {
   const value = request.headers[name];
+
   return Array.isArray(value) ? value[0] : value;
 }
 
@@ -141,6 +163,7 @@ async function readJson(request: IncomingMessage): Promise<Record<string, unknow
 
   try {
     const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+
     return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
   } catch {
     return {};
