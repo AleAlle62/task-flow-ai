@@ -17,6 +17,7 @@ Options for run:
   --provider <name>   Agent to run underneath  (default: the only one installed)
   --model <name>      Model to ask it for      (default: the provider's own)
   --cwd <dir>         Project to work on       (default: here)
+  --resume <id|last>  Continue an interrupted run instead of starting one
 `;
 
 const VERSION = "0.1.0";

@@ -43,8 +43,10 @@ Built in the open. Here is exactly where it is:
 | | | |
 |---|---|---|
 | Six-phase pipeline, artifacts on disk | **working** | |
-| Plan approval before any code is written | **working** | asked in chat |
+| Plan approval before any code is written | **working** | asked in the terminal |
 | Correction loop, review back to implement | **working** | max two rounds |
+| Resuming an interrupted run | **working** | `run --resume last` |
+| Writing confined to `write_paths` | **working** | checked after the phase, not prevented |
 | Runs inside Claude Code, as a skill | **working** | the first agent supported |
 | Runs standalone, as a CLI | in progress | loads and validates; cannot run a task yet |
 | Runs inside Cursor, Gemini CLI, others | not yet | see *Adding your agent* below |
@@ -113,6 +115,12 @@ How strongly that is held depends on what is underneath:
 - **An agent that cannot restrict tools** makes the pipeline run read-only: the
   writing phase is skipped and you are told why. You still get the
   specification, the map, the plan and the review.
+
+Which *paths* it may write is a separate rule, `write_paths` in the pipeline
+file. That one is checked after the phase runs rather than prevented: no agent
+CLI offers a reliable path whitelist, so the run fails and names every file that
+was touched outside the fence. Those files are left exactly as they were
+written — undoing your work on a guess would be worse than telling you.
 
 ## Make it yours
 

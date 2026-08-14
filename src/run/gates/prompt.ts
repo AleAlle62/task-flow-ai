@@ -1,7 +1,7 @@
 import readline from "node:readline/promises";
 
-import type { Gate } from "../model/types.js";
-import { bold, dim, line } from "../ui.js";
+import type { Gate } from "../../model/types.js";
+import { bold, dim, line } from "../../ui.js";
 
 export interface GateAnswer {
   approved: boolean;
@@ -17,6 +17,11 @@ const SEVERITY = /\[(blocking|serious|minor|critical|high|medium|low)\]/i;
 export function shouldStop(gate: Gate, artifact: string): boolean {
   if (gate.when !== "findings") return true;
   return SEVERITY.test(artifact);
+}
+
+/** Where a gate's answer is kept, so a resumed run does not ask it twice. */
+export function gateRecordName(phaseId: string): string {
+  return `gates-${phaseId}.md`;
 }
 
 /**

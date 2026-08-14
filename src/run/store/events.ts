@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-import type { RunEvent } from "../model/run.js";
+import type { RunEvent } from "../../model/run.js";
 
 /**
  * The event log: one JSON object per line, appended and never rewritten.

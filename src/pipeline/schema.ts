@@ -1,5 +1,6 @@
 import type { FindingsPolicy, Gate } from "../model/types.js";
 import { ConfigError, asNumber, asStringArray, isRecord } from "../util/guards.js";
+import { readFindingsPolicy, readGate } from "./schema-gate.js";
 
 /**
  * Shape only: turns raw YAML into typed pieces and complains when a field is
@@ -27,8 +28,6 @@ const PHASE_ID = /^[a-z0-9][a-z0-9_-]*$/;
 
 const DEFAULT_TIMEOUT_SECONDS = 600;
 
-const DEFAULT_MAX_LOOPS = 2;
-
 export function readPipelineSpec(raw: unknown, file: string): PipelineSpec {
   if (!isRecord(raw)) {
     throw new ConfigError(`${file}: expected a YAML mapping at the top level`);
@@ -53,13 +52,7 @@ function readPhase(raw: unknown, index: number, file: string): PhaseSpec {
 
   if (!isRecord(raw)) throw new ConfigError(`${position}: expected a mapping`);
 
-  const id = raw["id"];
-
-  if (typeof id !== "string" || !PHASE_ID.test(id)) {
-    throw new ConfigError(
-      `${position}: "id" is required — lowercase letters, digits, "-" or "_". It is also the name of the file in agents/.`,
-    );
-  }
+  const id = readId(raw["id"], position);
 
   const phase: PhaseSpec = {
     id,
@@ -78,6 +71,16 @@ function readPhase(raw: unknown, index: number, file: string): PhaseSpec {
   return phase;
 }
 
+function readId(raw: unknown, position: string): string {
+  if (typeof raw !== "string" || !PHASE_ID.test(raw)) {
+    throw new ConfigError(
+      `${position}: "id" is required — lowercase letters, digits, "-" or "_". It is also the name of the file in agents/.`,
+    );
+  }
+
+  return raw;
+}
+
 /**
  * An output is a plain file name: artifacts live in the run directory and
  * nowhere else, so a path here would be a way out of it.
@@ -94,61 +97,4 @@ function readOutput(raw: unknown, id: string, file: string): string {
   }
 
   return raw;
-}
-
-function readGate(raw: unknown, id: string, file: string): Gate | undefined {
-  if (raw === undefined) return undefined;
-
-  if (!isRecord(raw)) {
-    throw new ConfigError(`${file}: phase "${id}": "gate" must be a mapping`);
-  }
-
-  const options = asStringArray(raw["options"]);
-
-  if (!options || options.length < 2) {
-    throw new ConfigError(
-      `${file}: phase "${id}": a gate needs at least two "options" to choose between`,
-    );
-  }
-
-  const gate: Gate = { options };
-
-  if (typeof raw["show"] === "string") gate.show = raw["show"];
-
-  const when = raw["when"];
-
-  if (when !== undefined) {
-    if (when !== "always" && when !== "findings") {
-      throw new ConfigError(
-        `${file}: phase "${id}": gate "when" must be "always" or "findings", got ${JSON.stringify(when)}`,
-      );
-    }
-    gate.when = when;
-  }
-
-  return gate;
-}
-
-function readFindingsPolicy(
-  raw: unknown,
-  id: string,
-  file: string,
-): FindingsPolicy | undefined {
-  if (raw === undefined) return undefined;
-
-  if (!isRecord(raw)) {
-    throw new ConfigError(`${file}: phase "${id}": "on_findings" must be a mapping`);
-  }
-
-  const goto = raw["goto"];
-
-  if (typeof goto !== "string") {
-    throw new ConfigError(`${file}: phase "${id}": "on_findings.goto" is required`);
-  }
-
-  return {
-    severity: asStringArray(raw["severity"]) ?? ["blocking"],
-    goto,
-    maxLoops: asNumber(raw["max_loops"], DEFAULT_MAX_LOOPS),
-  };
 }
