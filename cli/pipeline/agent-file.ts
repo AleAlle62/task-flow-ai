@@ -3,18 +3,22 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
 import { PACKAGED_AGENTS_DIR, projectAgentsDir } from "../paths.js";
+import {
+  CAPABILITIES,
+  CAPABILITY_HELP,
+  changesCode,
+  isCapability,
+  type Capability,
+} from "../model/capabilities.js";
 import type { Agent } from "../model/types.js";
 import { ConfigError, errorMessage, isRecord } from "../util/guards.js";
 import { splitFrontmatter } from "../util/frontmatter.js";
-
-/** Tools that can change the user's files. Everything else is read-only. */
-const WRITING_TOOLS = new Set(["Write", "Edit", "NotebookEdit"]);
 
 /**
  * Reads a phase file: frontmatter on top, instructions below. The format is
  * plain markdown on purpose, so the same file can be read by this tool and by
  * any agent that loads markdown definitions — the body becomes the system
- * prompt, the frontmatter declares the tools.
+ * prompt, the frontmatter declares the capabilities.
  */
 export function loadAgent(projectDir: string, id: string): Agent {
   const file = resolveAgentFile(projectDir, id);
@@ -36,14 +40,15 @@ export function loadAgent(projectDir: string, id: string): Agent {
   return {
     id,
     description: typeof header["description"] === "string" ? header["description"] : "",
-    tools: parseTools(header["tools"], file),
+    capabilities: parseCapabilities(header["capabilities"], file),
+    declaredTools: parseList(header["tools"]) ?? [],
     prompt,
     file,
   };
 }
 
 export function canWrite(agent: Agent): boolean {
-  return agent.tools.some((tool) => WRITING_TOOLS.has(tool));
+  return changesCode(agent.capabilities);
 }
 
 /** A project's own copy of a phase wins over the packaged one. */
@@ -75,16 +80,47 @@ function parseHeader(header: string, file: string): Record<string, unknown> {
   return parsed;
 }
 
-/** Accepts both spellings found in the wild: a comma-separated string or a list. */
-function parseTools(raw: unknown, file: string): string[] {
-  const items =
-    typeof raw === "string" ? raw.split(",") : Array.isArray(raw) ? raw.map(String) : undefined;
+/**
+ * The capabilities line, checked word by word.
+ *
+ * A misspelling is refused rather than ignored: a phase that asked for "wrtie"
+ * and silently got nothing would look read-only in every report while being
+ * exactly as dangerous as before — a security boundary that fails quietly is
+ * not one.
+ */
+function parseCapabilities(raw: unknown, file: string): Capability[] {
+  const items = parseList(raw);
 
   if (!items) {
     throw new ConfigError(
-      `${file}: "tools" is required in the frontmatter. It is what stops a phase from writing to your code, so there is no default.`,
+      `${file}: "capabilities" is required in the frontmatter. It is what stops a phase\n` +
+        `from writing to your code, so there is no default. Choose from:\n` +
+        CAPABILITIES.map((name) => `  ${name.padEnd(8)} ${CAPABILITY_HELP[name]}`).join("\n"),
     );
   }
 
-  return items.map((tool) => tool.trim()).filter((tool) => tool !== "");
+  const unknown = items.filter((item) => !isCapability(item));
+
+  if (unknown.length > 0) {
+    throw new ConfigError(
+      `${file}: unknown ${unknown.length === 1 ? "capability" : "capabilities"} ${unknown
+        .map((item) => `"${item}"`)
+        .join(", ")}. Known: ${CAPABILITIES.join(", ")}.\n` +
+        `These are not tool names — a provider translates them into its own.`,
+    );
+  }
+
+  if (items.length === 0) {
+    throw new ConfigError(`${file}: "capabilities" is empty, so the phase could do nothing`);
+  }
+
+  return items as Capability[];
+}
+
+/** Accepts both spellings found in the wild: a comma-separated string or a list. */
+function parseList(raw: unknown): string[] | undefined {
+  const items =
+    typeof raw === "string" ? raw.split(",") : Array.isArray(raw) ? raw.map(String) : undefined;
+
+  return items?.map((item) => item.trim()).filter((item) => item !== "");
 }

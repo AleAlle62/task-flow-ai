@@ -30,7 +30,7 @@ export function phaseSkipped(id: string): void {
 export function providerCannotWrite(providerId: string, skipped: Phase[]): void {
   line();
   line(
-    `${amber("!")} provider "${providerId}" cannot enforce which tools a phase gets, ` +
+    `${amber("!")} provider "${providerId}" cannot hold a phase to what it was granted, ` +
       `so ${skipped.map((phase) => phase.id).join(", ")} will not run and nothing will be written.`,
   );
   line(dim(`  You still get the specification, the exploration, the plan and the review.`));

@@ -1,6 +1,7 @@
 ---
 name: implement-ai
 description: Implements the plan by writing the code. Fourth phase of the pipeline. Modifies files and runs the tests.
+capabilities: read, search, write, execute
 tools: Read, Write, Edit, Grep, Glob, Bash
 ---
 

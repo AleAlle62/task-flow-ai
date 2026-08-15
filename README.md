@@ -109,18 +109,43 @@ task-flow-ai run "fix the empty cart bug"
 
 ## Who is allowed to write
 
-Exactly one phase. It is declared in `agents/implement-ai.md`, on the `tools`
-line, and the tool refuses to start if a second phase has a writing tool.
+Exactly one phase. It is declared in `agents/implement-ai.md`, on the
+`capabilities` line, and the tool refuses to start if a second phase holds a
+capability that can change your code.
 
-How strongly that is held depends on what is underneath:
+There are five capabilities, and no product's tool names appear among them:
 
-- **The CLI** launches each phase without the writing tools existing at all. A
-  read-only phase has no way to write, whatever it decides to do.
-- **A skill** asks the host agent to respect it. Hosts generally do, but it is
-  an instruction rather than a wall.
-- **An agent that cannot restrict tools** makes the pipeline run read-only: the
-  writing phase is skipped and you are told why. You still get the
-  specification, the map, the plan and the review.
+| | |
+|---|---|
+| `read` | open files in the project |
+| `search` | find files and text across the project |
+| `inspect` | run read-only commands — git history, grep, listing |
+| `execute` | run any command — **changes your code** |
+| `write` | create and modify files — **changes your code** |
+
+`execute` counts as writing because it is writing: `echo x > file` changes your
+project exactly as much as an editor does. A phase that only needs to read git
+history asks for `inspect`, which a provider may offer only if it can hold the
+command list to commands that look and do not touch.
+
+How strongly that is held depends on what is underneath. Each provider declares
+which of the three it can do, and the pipeline believes it rather than hoping:
+
+- **`tools`** — the exact capability list is granted and nothing else. A phase
+  without `write` has no way to write, whatever it decides to do. This is what
+  `claude-cli` does.
+- **`read-only`** — no per-capability control, but a phase can be made unable to
+  change anything. That is enough: the one phase allowed to write was allowed to
+  write anyway, so the whole pipeline still runs.
+- **`none`** — nothing can be held back. The writing phase is skipped and you
+  are told why. You still get the specification, the map, the plan and the
+  review.
+
+A skill running inside a host agent is a fourth case: it asks the host to
+respect the list. Hosts generally do, but it is an instruction rather than a
+wall, which is why the phase files also carry a narrower `tools:` line for that
+reader — `validate` warns if that line ever grants more than the capabilities
+allow.
 
 Which *paths* it may write is a separate rule, `write_paths` in the pipeline
 file. That one is checked after the phase runs rather than prevented: no agent
@@ -145,9 +170,10 @@ Any project can override a phase for itself by dropping its own copy in
 
 Two files, and nothing else in the repository changes:
 
-1. **An adapter** in `src/providers/`, implementing the contract in
-   [`src/providers/types.ts`](src/providers/types.ts): run a phase, return its
-   text, and say whether you can enforce the tool list.
+1. **An adapter** in `cli/providers/`, implementing the contract in
+   [`cli/providers/types.ts`](cli/providers/types.ts): run a phase, return its
+   text, translate the five capabilities into whatever your agent calls them,
+   and say how much of that list you can actually hold it to.
 2. **An install manifest** for that agent, alongside the existing
    `.claude-plugin/`.
 

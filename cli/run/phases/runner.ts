@@ -32,7 +32,7 @@ export async function executePhase(
     const result = await context.provider.run({
       instructions: phase.agent.prompt,
       input: buildPhaseInput(phase, store, context.projectDir, correction),
-      tools: phase.agent.tools,
+      capabilities: phase.agent.capabilities,
       canWrite: phase.canWrite,
       cwd: context.projectDir,
       timeoutMs: timeoutMs(phase, context),

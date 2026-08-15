@@ -10,8 +10,10 @@
 #
 #   - the provider comes from --provider or your own configuration
 #   - the model comes from --model or the provider's own default
-#   - the tools each phase gets are declared in agents/<id>.md, which is what
-#     stops five phases out of six from writing to your code
+#   - what each phase may do is declared in agents/<id>.md, on the
+#     "capabilities" line, which is what stops five phases out of six from
+#     changing your code. Those are this tool's own words, not any product's
+#     tool names — a provider translates them.
 #
 # Adding a phase is five lines here plus a file in agents/. You should never
 # need to touch the code to change how the pipeline behaves.

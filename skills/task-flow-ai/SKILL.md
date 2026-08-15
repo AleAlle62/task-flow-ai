@@ -110,9 +110,12 @@ pipeline.
 
 ## Rules that hold throughout
 
-- **Only `implement-ai` may modify the user's code.** The other five are
-  read-only by construction. Never do their work yourself in this conversation,
-  and never make an edit "to save a phase the trouble".
+- **Only `implement-ai` may modify the user's code.** It is the only phase whose
+  `capabilities` line contains `write` or `execute`; the other five hold at most
+  `inspect`, which is reading git history and grepping, not running things.
+  Give each subagent the tools of its own phase file and no more. Never do their
+  work yourself in this conversation, and never make an edit "to save a phase the
+  trouble" — running a command on a read-only phase's behalf is making an edit.
 - **Never edit an artifact after saving it.** They are the record of what each
   phase actually said. If a phase produced something poor, that is a finding
   about the pipeline, and it belongs in the summary.

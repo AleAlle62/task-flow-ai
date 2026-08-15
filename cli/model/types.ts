@@ -3,6 +3,8 @@
  * Nothing here reads a file or validates anything.
  */
 
+import type { Capability } from "./capabilities.js";
+
 /** A stop where a human decides. Declared now, honoured from step 2. */
 export interface Gate {
   show?: string;
@@ -18,13 +20,19 @@ export interface FindingsPolicy {
 }
 
 /**
- * A phase file in `agents/`, once read. `tools` is the security boundary of the
- * whole tool, not a preference: it is what stops a phase from writing.
+ * A phase file in `agents/`, once read. `capabilities` is the security boundary
+ * of the whole tool, not a preference: it is what stops a phase from writing.
+ *
+ * `declaredTools` is the same file's `tools:` line, kept because these files are
+ * also loaded directly by Claude Code as subagent definitions, which reads that
+ * line and not this one. Nothing in the pipeline acts on it — it is metadata for
+ * a different reader, and `validate` prints both so a disagreement is visible.
  */
 export interface Agent {
   id: string;
   description: string;
-  tools: string[];
+  capabilities: Capability[];
+  declaredTools: string[];
   prompt: string;
   file: string;
 }

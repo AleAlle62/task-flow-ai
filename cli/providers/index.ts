@@ -46,5 +46,5 @@ export function resolveProvider(requested?: string): Provider {
   );
 }
 
-export type { PhaseRequest, PhaseResult, Provider } from "./types.js";
+export type { Enforcement, PhaseRequest, PhaseResult, Provider } from "./types.js";
 export { ProviderError } from "./types.js";

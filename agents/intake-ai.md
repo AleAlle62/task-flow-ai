@@ -1,6 +1,7 @@
 ---
 name: intake-ai
 description: Reads a task and extracts requirements, constraints and acceptance criteria. First phase of the pipeline. Does not write code and does not design the solution.
+capabilities: read, search
 tools: Read, Grep, Glob
 ---
 

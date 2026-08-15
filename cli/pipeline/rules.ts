@@ -1,3 +1,4 @@
+import { WRITING_CAPABILITIES } from "../model/capabilities.js";
 import { COMPUTED_INPUTS, GATE_INPUT_PREFIX, type Phase } from "../model/types.js";
 import { ConfigError } from "../util/guards.js";
 
@@ -62,25 +63,34 @@ function checkFindingsTargetsExist(phases: Phase[], file: string): void {
  * "Who can touch my code?" — the question this whole tool exists to answer.
  *
  * Checked against the agent files rather than the pipeline, so it cannot be
- * loosened by editing the YAML alone.
+ * loosened by editing the YAML alone. A phase counts as a writer if it holds any
+ * capability that can change the project, which includes `execute`: a phase that
+ * can run commands can write files, whatever its description says.
  */
 function checkExactlyOnePhaseWrites(phases: Phase[], file: string): void {
   const writers = phases.filter((phase) => phase.canWrite);
 
   if (writers.length === 0) {
     throw new ConfigError(
-      `${file}: no phase can write, so a run could never change anything.\nGive one phase a writing tool in its agents/<id>.md frontmatter.`,
+      `${file}: no phase can write, so a run could never change anything.\nGive one phase "write" in its agents/<id>.md frontmatter.`,
     );
   }
 
   if (writers.length > 1) {
-    const named = writers.map((phase) => `${phase.id} (${phase.agent.file})`).join("\n  ");
+    const named = writers
+      .map((phase) => `${phase.id} (${phase.agent.file}) — ${writingCapabilities(phase).join(", ")}`)
+      .join("\n  ");
 
     throw new ConfigError(
-      `${file}: ${writers.length} phases can write to your code:\n  ${named}\n` +
-        `Exactly one may — that is the security boundary of this tool. Remove Write/Edit from the "tools" line of the others.`,
+      `${file}: ${writers.length} phases can change your code:\n  ${named}\n` +
+        `Exactly one may — that is the security boundary of this tool.\n` +
+        `Remove "write" and "execute" from the others; "inspect" runs read-only commands and is safe to keep.`,
     );
   }
+}
+
+function writingCapabilities(phase: Phase): string[] {
+  return phase.agent.capabilities.filter((capability) => WRITING_CAPABILITIES.has(capability));
 }
 
 function isComputed(input: string): boolean {
