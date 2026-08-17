@@ -1,36 +1,26 @@
 import type { Phase, Pipeline } from "../model/types.js";
-import { loadPipeline } from "../pipeline/load.js";
 
 /**
- * Reads a pipeline and prints it back as the flow it describes. Its real job is
- * to fail: a pipeline that is wrong should say so here, before a run starts
- * spending anything.
+ * A pipeline written out as the flow it describes: every phase, what it reads,
+ * what it may do, where it stops for you.
+ *
+ * Printed at the start of every run rather than hidden behind a command of its
+ * own. What a run is about to be allowed to do is worth reading before it
+ * happens, and a check you have to know to ask for is a check nobody runs.
  */
-export function validate(file: string, projectDir: string): number {
-  print(loadPipeline(file, projectDir));
-
-  return 0;
-}
-
-function print(pipeline: Pipeline): void {
+export function describeFlow(pipeline: Pipeline): string[] {
   const writers = pipeline.phases.filter((phase) => phase.canWrite).length;
 
-  const lines = [
-    pipeline.source,
+  return [
+    `${pipeline.source}  ·  ${pipeline.defaults.timeout}s per phase  ·  writable: ${pipeline.writePaths.join(", ")}`,
     "",
-    `timeout   ${pipeline.defaults.timeout}s per phase`,
-    `writable  ${pipeline.writePaths.join(", ")}`,
-    "",
-    ...pipeline.phases.flatMap(describe),
+    ...pipeline.phases.flatMap(describePhase),
     "",
     `${pipeline.phases.length} phases, ${writers} of which can touch your code.`,
-    "",
   ];
-
-  process.stdout.write(lines.join("\n"));
 }
 
-function describe(phase: Phase): string[] {
+function describePhase(phase: Phase): string[] {
   const marker = phase.canWrite ? "WRITES" : "reads ";
   const inputs = phase.inputs.length > 0 ? phase.inputs.join(", ") : "nothing";
 

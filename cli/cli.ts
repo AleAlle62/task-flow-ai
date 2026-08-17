@@ -1,26 +1,21 @@
 #!/usr/bin/env node
 
 import { run } from "./commands/run.js";
-import { validate } from "./commands/validate.js";
-import { DEFAULT_PIPELINE } from "./paths.js";
 import { ProviderError } from "./providers/index.js";
 import { ConfigError, errorMessage } from "./util/guards.js";
 
 const USAGE = `task-flow-ai — six separate phases, and you approve the plan.
 
 Usage:
-  task-flow-ai run [task]          Run the pipeline. Without a task, the
-                                  dashboard asks you for one.
-  task-flow-ai validate [file]     Check a pipeline file and show the flow
+  task-flow-ai run [task]     Run the pipeline in the current directory.
+                              Without a task, the dashboard asks you for one.
 
-Options for run:
-  --pipeline <file>   Pipeline to use          (default: the packaged one)
-  --provider <name>   Agent to run underneath  (default: the only one installed)
-  --model <name>      Model to ask it for      (default: the provider's own)
-  --cwd <dir>         Project to work on       (default: here)
-  --resume <id|last>  Continue an interrupted run instead of starting one
-  --port <n>          Dashboard port          (default: 4179)
-  --no-web true       Ask in the terminal instead of opening a browser
+Options:
+  --model <name>              Model to ask the agent for (default: its own)
+
+Everything else works itself out: an unfinished run here is offered to you, the
+dashboard takes a free port, and a pipeline at .taskflow/pipeline.yaml is used
+instead of the packaged one.
 `;
 
 const VERSION = "0.1.0";
@@ -39,9 +34,6 @@ async function main(argv: string[]): Promise<number> {
     case "-v":
       process.stdout.write(`${VERSION}\n`);
       return 0;
-
-    case "validate":
-      return validate(argv[1] ?? DEFAULT_PIPELINE, process.cwd());
 
     case "run":
       return await run(argv.slice(1));
