@@ -19,7 +19,21 @@ export interface PhaseRecord {
   endedAt?: string;
   durationMs?: number;
   costUsd?: number;
+  tokensIn?: number;
+  tokensOut?: number;
   error?: string;
+}
+
+/**
+ * A phase as it is known before the run exists: from the pipeline file, not
+ * from anything that has happened. It is what lets the first screen show what
+ * is about to happen, and which phase will be allowed to write, while you are
+ * still deciding whether to ask for it.
+ */
+export interface PlannedPhase {
+  id: string;
+  output: string;
+  canWrite: boolean;
 }
 
 export interface RunState {

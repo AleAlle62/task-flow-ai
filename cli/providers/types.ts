@@ -28,11 +28,19 @@ export interface PhaseRequest {
   model?: string;
 }
 
-/** What came back. `text` becomes the phase's artifact; `raw` is for debugging. */
+/**
+ * What came back. `text` becomes the phase's artifact; `raw` is for debugging.
+ *
+ * `tokensIn` and `tokensOut` are optional because not every agent reports them.
+ * A provider that cannot say leaves them out rather than guessing, and the
+ * dashboard shows nothing instead of a number that means nothing.
+ */
 export interface PhaseResult {
   text: string;
   costUsd?: number;
   durationMs?: number;
+  tokensIn?: number;
+  tokensOut?: number;
   raw?: unknown;
 }
 

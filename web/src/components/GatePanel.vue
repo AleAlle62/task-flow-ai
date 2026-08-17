@@ -60,7 +60,7 @@ function decide(approved: boolean): void {
 
 <style scoped>
 .gate {
-  border: 1px solid var(--amber);
+  border: 1px solid var(--waiting);
   border-radius: 12px;
   background: var(--panel);
   padding: 18px 20px;
@@ -109,7 +109,7 @@ footer {
 }
 
 .approve {
-  border-color: var(--green);
-  color: var(--green);
+  border-color: var(--done);
+  color: var(--done);
 }
 </style>

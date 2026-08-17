@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { RunState, RunStatus } from "../../model/run.js";
+import type { PhaseUsage, RunState, RunStatus } from "../../model/run.js";
 import { runsDir } from "../../paths.js";
 import { ConfigError } from "../../util/guards.js";
 import { EventLog } from "./events.js";
@@ -120,16 +120,18 @@ export class RunStore {
     this.events.append("phase_started", { phase: id });
   }
 
-  finishPhase(id: string, costUsd?: number): void {
-    const record = records.completed(this.requirePhase(id), costUsd);
+  finishPhase(id: string, usage: PhaseUsage = {}): void {
+    const record = records.completed(this.requirePhase(id), usage);
 
-    this.state.totalCostUsd += costUsd ?? 0;
+    this.state.totalCostUsd += usage.costUsd ?? 0;
     this.commit(records.replace(this.state.phases, record));
 
     this.events.append("phase_finished", {
       phase: id,
       durationMs: record.durationMs,
       costUsd: record.costUsd,
+      tokensIn: record.tokensIn,
+      tokensOut: record.tokensOut,
     });
   }
 

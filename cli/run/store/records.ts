@@ -1,4 +1,4 @@
-import type { PhaseRecord } from "../../model/run.js";
+import type { PhaseRecord, PhaseUsage } from "../../model/run.js";
 
 /**
  * How a phase's record changes as it runs. Pure functions over plain data: no
@@ -19,12 +19,14 @@ export function started(id: string, output: string): PhaseRecord {
   return { id, status: "running", output, startedAt: new Date().toISOString() };
 }
 
-export function completed(record: PhaseRecord, costUsd?: number): PhaseRecord {
+export function completed(record: PhaseRecord, usage: PhaseUsage = {}): PhaseRecord {
   return {
     ...record,
     ...ended(record),
     status: "done",
-    ...(costUsd === undefined ? {} : { costUsd }),
+    ...(usage.costUsd === undefined ? {} : { costUsd: usage.costUsd }),
+    ...(usage.tokensIn === undefined ? {} : { tokensIn: usage.tokensIn }),
+    ...(usage.tokensOut === undefined ? {} : { tokensOut: usage.tokensOut }),
   };
 }
 

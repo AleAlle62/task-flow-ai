@@ -79,11 +79,11 @@ li {
 
 .phase_failed,
 .write_paths_violated {
-  color: var(--red);
+  color: var(--writes);
 }
 
 .gate_opened,
 .gate_answered {
-  color: var(--amber);
+  color: var(--waiting);
 }
 </style>

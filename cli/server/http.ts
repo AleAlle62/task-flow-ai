@@ -4,7 +4,7 @@ import path from "node:path";
 import { packageRoot } from "../paths.js";
 import { BrowserPrompter } from "./browser-prompter.js";
 import { handle } from "./routes.js";
-import { Session } from "./session.js";
+import { Session, type PlannedPhase } from "./session.js";
 import { newToken } from "./token.js";
 
 /** Where `vite build` leaves the dashboard. */
@@ -28,17 +28,20 @@ export interface Dashboard {
  * approve a plan that then writes to your code, so it is never reachable from
  * another machine, and every request has to carry the token minted here.
  */
-export function startDashboard(port: number): Promise<Dashboard> {
+export function startDashboard(port: number, plan: PlannedPhase[]): Promise<Dashboard> {
   const token = newToken();
 
   return new Promise<Dashboard>((resolve, reject) => {
     let session: Session | undefined;
+
+    let origins: string[] = [];
 
     const server = createServer((request, response) => {
       handle(request, response, {
         session: session as Session,
         token,
         webRoot: WEB_ROOT,
+        origins,
       }).catch(() => {
         response.writeHead(500, { "content-type": "application/json" });
         response.end(`{"error":"internal"}`);
@@ -48,10 +51,14 @@ export function startDashboard(port: number): Promise<Dashboard> {
     server.once("error", reject);
 
     server.listen(port, "127.0.0.1", () => {
-      const url = `http://127.0.0.1:${actualPort(server, port)}/?t=${token}`;
+      const bound = actualPort(server, port);
+
+      origins = [`http://127.0.0.1:${bound}`, `http://localhost:${bound}`];
+
+      const url = `http://127.0.0.1:${bound}/?t=${token}`;
       const prompter = new BrowserPrompter(url);
 
-      session = new Session(prompter);
+      session = new Session(prompter, plan);
 
       resolve({ url, prompter, session, close: () => closeServer(server) });
     });

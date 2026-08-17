@@ -48,8 +48,9 @@ There is one command. Go to your project and run it:
 task-flow-ai run
 ```
 
-Your browser opens, you type what needs doing, and the run starts. The plan
-waits for you there.
+Your browser opens, you type what needs doing, and the run starts. From then on
+the page shows the six phases across the top, which one is working, and what it
+has cost so far in time, tokens and money. The plan waits for you there.
 
 If you would rather say it up front, say it:
 
@@ -102,7 +103,8 @@ Written plainly, so you find out here rather than later:
   adapter — see below.
 - **`write_paths` is checked after the fact, not enforced.** No agent CLI offers
   a reliable path whitelist, so a run that wrote outside its fence fails and
-  names every file. Those files are left exactly as they were written.
+  names every file. Those files are left exactly as they were written. Changes
+  you had already made before the run are not counted against it.
 - **The dashboard is for your machine only.** It binds to `127.0.0.1` and is not
   meant to be exposed to a network.
 - **Version 0.1.0.** The pipeline works end to end; the details around it still
@@ -165,6 +167,16 @@ answer the two gates.
   any page open in your browser can also reach `127.0.0.1`, and without a secret
   it does not know, a random site could answer a gate — that is, approve a plan
   that then writes to your code.
+- **A second lock on top of it.** A request whose `Origin` is some other site is
+  refused before the token is even read. The token travels in the address of the
+  page, which is the kind of thing that ends up in a screenshot or a pasted bug
+  report, so it should not be the only thing standing there.
+- **An approval names what it is approving.** The answer to a gate carries the
+  phase it belongs to, and is refused if that is not the question on the table.
+  With two tabs open, a click meant for the plan cannot land on whatever was
+  asked next.
+- **Bodies are capped at a megabyte**, which is a great deal more than a typed
+  sentence and a note.
 - **Port 4179 when it is free**, any free port when it is not. A second run in
   another project is not an error.
 - **It is optional.** If the dashboard cannot start at all, the run does not

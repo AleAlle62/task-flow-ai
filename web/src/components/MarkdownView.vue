@@ -14,9 +14,16 @@ const html = computed(() => renderMarkdown(props.source));
 </template>
 
 <style scoped>
+/*
+ * Artifacts are documents, not interface: a specification, a plan, a review,
+ * written to be read before you approve them. They get the reading face, which
+ * also keeps them visibly separate from the controls around them.
+ */
 .md {
-  font-size: 14.5px;
-  line-height: 1.62;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 74ch;
 }
 
 .md :deep(h2),
@@ -38,9 +45,10 @@ const html = computed(() => renderMarkdown(props.source));
 
 .md :deep(h4),
 .md :deep(h5) {
-  font-size: 13px;
+  font-family: var(--mono);
+  font-size: 11.5px;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.09em;
   color: var(--faint);
 }
 
@@ -62,12 +70,20 @@ const html = computed(() => renderMarkdown(props.source));
   margin: 4px 0;
 }
 
+/*
+ * The inline box is kept shorter than the line it sits in — no vertical
+ * padding, and a line-height of its own. Without both, a monospace face with
+ * taller metrics than the surrounding serif silently stretches every line that
+ * happens to mention a variable, and the paragraph reads as if it were
+ * double-spaced in places.
+ */
 .md :deep(code) {
   font-family: var(--mono);
-  font-size: 0.87em;
+  font-size: 0.84em;
+  line-height: 1;
   background: var(--panel-2);
-  padding: 1.5px 5px;
-  border-radius: 5px;
+  padding: 0 0.35em;
+  border-radius: 4px;
 }
 
 .md :deep(pre) {

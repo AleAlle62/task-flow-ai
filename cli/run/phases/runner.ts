@@ -40,7 +40,11 @@ export async function executePhase(
     });
 
     store.writeArtifact(phase.output, result.text);
-    store.finishPhase(phase.id, result.costUsd);
+    store.finishPhase(phase.id, {
+      ...(result.costUsd === undefined ? {} : { costUsd: result.costUsd }),
+      ...(result.tokensIn === undefined ? {} : { tokensIn: result.tokensIn }),
+      ...(result.tokensOut === undefined ? {} : { tokensOut: result.tokensOut }),
+    });
 
     return {
       ok: true,

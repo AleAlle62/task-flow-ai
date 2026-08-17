@@ -11,7 +11,16 @@ export interface PhaseRecord {
   endedAt?: string;
   durationMs?: number;
   costUsd?: number;
+  tokensIn?: number;
+  tokensOut?: number;
   error?: string;
+}
+
+/** What a finished phase cost, in the three currencies worth watching. */
+export interface PhaseUsage {
+  costUsd?: number;
+  tokensIn?: number;
+  tokensOut?: number;
 }
 
 /**

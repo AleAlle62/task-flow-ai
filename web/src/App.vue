@@ -5,7 +5,8 @@ import ArtifactPanel from "@/components/ArtifactPanel.vue";
 import EventLog from "@/components/EventLog.vue";
 import GatePanel from "@/components/GatePanel.vue";
 import NowLine from "@/components/NowLine.vue";
-import PhaseFlow from "@/components/PhaseFlow.vue";
+import PhaseStepper from "@/components/PhaseStepper.vue";
+import RunMeters from "@/components/RunMeters.vue";
 import TaskForm from "@/components/TaskForm.vue";
 import { useRunStore } from "@/stores/run";
 
@@ -26,84 +27,138 @@ async function decide(approved: boolean, note: string): Promise<void> {
 
 <template>
   <main>
-    <header class="top">
-      <h1>{{ store.run?.task ?? "task-flow-ai" }}</h1>
-      <p class="where">
-        <span v-if="store.run">{{ store.run.id }}</span>
-        <span v-if="store.run && store.run.totalCostUsd > 0">
-          · ${{ store.run.totalCostUsd.toFixed(4) }}
-        </span>
-      </p>
-    </header>
+    <TaskForm v-if="!store.run" :steps="store.steps" @submit="store.start" />
 
-    <TaskForm v-if="!store.run && store.needsTask" @submit="store.start" />
+    <template v-else>
+      <header class="bar">
+        <div class="titles">
+          <h1>{{ store.run.task }}</h1>
+          <p class="where tabular">{{ store.run.id }}</p>
+        </div>
 
-    <template v-if="store.run">
-      <PhaseFlow :phases="store.phases" :waiting-on="store.gate?.phase" />
+        <PhaseStepper :steps="store.steps" />
+      </header>
 
       <NowLine
         :status="store.run.status"
         :active="store.activePhase"
         :waiting-on="store.gate?.phase"
       />
+
+      <RunMeters
+        :started-at="store.run.startedAt"
+        :ended-at="store.run.endedAt"
+        :cost-usd="store.totals.costUsd"
+        :tokens-in="store.totals.tokensIn"
+        :tokens-out="store.totals.tokensOut"
+        :done="store.totals.done"
+        :of="store.totals.of"
+      />
+
+      <GatePanel v-if="store.gate" :gate="store.gate" @decide="decide" />
+
+      <p v-if="stale" class="error">
+        That question had already been answered — this page was out of date.
+      </p>
+
+      <ArtifactPanel :phases="store.phases" />
+
+      <details v-if="store.events.length > 0">
+        <summary>Events</summary>
+        <EventLog :events="store.events" />
+      </details>
     </template>
 
     <p v-if="store.error" class="error">{{ store.error }}</p>
-
-    <GatePanel v-if="store.gate" :gate="store.gate" @decide="decide" />
-
-    <p v-if="stale" class="error">
-      That question had already been answered — this page was out of date.
-    </p>
-
-    <ArtifactPanel v-if="store.run" :phases="store.phases" />
-
-    <details v-if="store.events.length > 0">
-      <summary>Events</summary>
-      <EventLog :events="store.events" />
-    </details>
   </main>
 </template>
 
 <style scoped>
 main {
-  max-width: 1000px;
+  max-width: 1020px;
   margin: 0 auto;
-  padding: 34px 24px 60px;
+  padding: 0 24px 72px;
   display: grid;
-  gap: 20px;
+  gap: 18px;
+  align-content: start;
+}
+
+/*
+ * The steps stay in view while you scroll an artifact: knowing where the run is
+ * matters more than the four lines of text the header would otherwise cost.
+ */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line-soft);
+  margin: 0 -24px;
+  padding: 18px 24px 14px;
+  display: grid;
+  gap: 16px;
+}
+
+.titles {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 h1 {
-  margin: 0 0 4px;
-  font-size: 21px;
-  font-weight: 650;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .where {
   margin: 0;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--faint);
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* Side by side needs room the phone does not have; below it, they stack. */
+@media (max-width: 620px) {
+  .titles {
+    display: block;
+  }
+
+  .where {
+    margin-top: 4px;
+  }
+
+  .bar {
+    margin: 0 -16px;
+    padding: 14px 16px 12px;
+  }
+
+  main {
+    padding: 0 16px 56px;
+  }
 }
 
 .error {
   margin: 0;
-  color: var(--red);
+  color: var(--writes);
   font-size: 13px;
 }
 
 summary {
   cursor: pointer;
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
   color: var(--faint);
   text-transform: uppercase;
-  letter-spacing: 0.9px;
-  font-weight: 650;
+  letter-spacing: 0.09em;
 }
 
 details[open] summary {

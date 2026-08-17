@@ -7,7 +7,7 @@ import type { Correction } from "./inputs/build.js";
 import { executePhase, phaseDurationMs } from "./phases/runner.js";
 import * as report from "./reporting.js";
 import { selectRunnablePhases } from "./phases/selection.js";
-import { filesOutside } from "./phases/write-paths.js";
+import { changedFiles, filesOutside } from "./phases/write-paths.js";
 
 /**
  * The order phases happen in, and nothing else.
@@ -44,6 +44,9 @@ export async function runPipeline(context: RunContext): Promise<RunStatus> {
 
     report.phaseStarting(index, phases.length, phase.id);
 
+    /** Taken before the phase runs, so the check can tell its work from yours. */
+    const dirtyBefore = phase.canWrite ? changedFiles(context.projectDir) : [];
+
     const outcome = await executePhase(phase, context, correction);
 
     if (!outcome.ok) {
@@ -54,7 +57,7 @@ export async function runPipeline(context: RunContext): Promise<RunStatus> {
     correction = undefined;
     report.phaseDone(phase.output, phaseDurationMs(phase, context), outcome.costUsd);
 
-    if (phase.canWrite && !withinWritePaths(phase, context)) return "failed";
+    if (phase.canWrite && !withinWritePaths(phase, context, dirtyBefore)) return "failed";
 
     if ((await passGate(phase, outcome.artifact, context)) === "stopped") {
       report.stopped(phase.id);
@@ -109,9 +112,12 @@ function gateOf(phase: Phase, context: RunContext): Promise<GateOutcome> {
  * The writing phase is checked against `write_paths` after it runs. Files it
  * touched outside them are left exactly as they are and named: undoing
  * someone's work automatically is worse than telling them about it.
+ *
+ * `dirtyBefore` is what your project already looked like when the phase
+ * started, so what is reported is the phase's doing and not yours.
  */
-function withinWritePaths(phase: Phase, context: RunContext): boolean {
-  const outside = filesOutside(context.projectDir, context.pipeline.writePaths);
+function withinWritePaths(phase: Phase, context: RunContext, dirtyBefore: string[]): boolean {
+  const outside = filesOutside(context.projectDir, context.pipeline.writePaths, dirtyBefore);
   if (outside.length === 0) return true;
 
   context.store.events.append("write_paths_violated", { phase: phase.id, files: outside });

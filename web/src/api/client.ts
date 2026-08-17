@@ -1,4 +1,4 @@
-import type { PendingGate, RunEvent, RunState } from "./types";
+import type { PendingGate, PlannedPhase, RunEvent, RunState } from "./types";
 
 /**
  * The only place in the dashboard that knows the server exists.
@@ -12,6 +12,11 @@ const token = new URLSearchParams(window.location.search).get("t") ?? "";
 /** Null until the run exists — the page opens before anything is decided. */
 export async function fetchRun(): Promise<RunState | null> {
   return getJson<RunState | null>("/api/run");
+}
+
+/** The flow this run will follow, known from the pipeline file before it starts. */
+export async function fetchPlan(): Promise<PlannedPhase[]> {
+  return (await getJson<{ phases: PlannedPhase[] }>("/api/plan")).phases;
 }
 
 export async function isAwaitingTask(): Promise<boolean> {
@@ -42,11 +47,19 @@ export async function fetchArtifact(name: string): Promise<string> {
   return response.text();
 }
 
-export async function answerGate(approved: boolean, note: string): Promise<boolean> {
+/**
+ * The phase is named in the answer, not left implicit. A second tab still
+ * showing yesterday's question must not be able to approve today's.
+ */
+export async function answerGate(
+  phase: string,
+  approved: boolean,
+  note: string,
+): Promise<boolean> {
   const response = await fetch(withToken("/api/gate"), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ approved, note }),
+    body: JSON.stringify({ phase, approved, note }),
   });
 
   const body = (await response.json()) as { accepted?: boolean };

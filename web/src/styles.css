@@ -1,53 +1,77 @@
+/**
+ * The dashboard's palette, shared with the project's documentation page so the
+ * two read as one product.
+ *
+ * Five hues, each meaning one thing and nothing else: blue is the phase working
+ * now, teal is finished, amber is waiting for you, carmine is the phase allowed
+ * to change your code — and, when something breaks, the break. Everything else
+ * is a neutral with a slight blue bias, chosen rather than inherited.
+ */
 :root {
-  --bg: #fbfbfc;
-  --panel: #fff;
-  --panel-2: #f2f4f7;
-  --line: #e3e6eb;
-  --text: #141a23;
-  --dim: #5f6875;
-  --faint: #9aa2b0;
-  --accent: #5b6ef5;
-  --green: #12a06a;
-  --amber: #c2811b;
-  --red: #d4485f;
-  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ground: #eef1f5;
+  --panel: #ffffff;
+  --panel-2: #f4f6f9;
+  --line: #dae0e7;
+  --line-soft: #e8ecf1;
+
+  --text: #141c25;
+  --dim: #5b6875;
+  --faint: #8b96a3;
+
+  --accent: #285f8f;
+  --done: #1c7a5e;
+  --waiting: #9a6a12;
+  --writes: #9c2b3c;
+  --writes-soft: rgba(156, 43, 60, 0.08);
+
+  --serif: "Iowan Old Style", Charter, "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d1015;
-    --panel: #151a21;
-    --panel-2: #1b222b;
-    --line: #252d38;
-    --text: #e8edf4;
-    --dim: #98a1b0;
-    --faint: #69727f;
-    --accent: #8b9bff;
-    --green: #3ecf8e;
-    --amber: #f0a35e;
-    --red: #e5677b;
+    --ground: #0f141a;
+    --panel: #161d25;
+    --panel-2: #1b232c;
+    --line: #29333e;
+    --line-soft: #212a33;
+
+    --text: #e3e9ef;
+    --dim: #94a2b0;
+    --faint: #6d7a88;
+
+    --accent: #78acdd;
+    --done: #4cba95;
+    --waiting: #e0a950;
+    --writes: #e67b8b;
+    --writes-soft: rgba(230, 123, 139, 0.12);
   }
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--ground);
   color: var(--text);
-  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+  font: 15px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
   font: inherit;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 7px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--text);
-  padding: 9px 18px;
+  padding: 8px 16px;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 button:hover:not(:disabled) {
@@ -55,19 +79,29 @@ button:hover:not(:disabled) {
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 textarea {
   font: inherit;
   width: 100%;
   padding: 9px 11px;
-  border-radius: 8px;
+  border-radius: 7px;
   border: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--panel);
   color: var(--text);
   resize: vertical;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 pre {
@@ -77,4 +111,16 @@ pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/** Numbers that sit in columns should not jitter as they count up. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

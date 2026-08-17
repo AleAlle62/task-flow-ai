@@ -97,28 +97,28 @@ const tone = computed(() => {
 }
 
 .waiting {
-  border-color: var(--amber);
+  border-color: var(--waiting);
 }
 
 .waiting .beacon {
-  background: var(--amber);
+  background: var(--waiting);
 }
 
 .waiting .what {
-  color: var(--amber);
+  color: var(--waiting);
   font-weight: 600;
 }
 
 .done .beacon {
-  background: var(--green);
+  background: var(--done);
 }
 
 .failed .beacon {
-  background: var(--red);
+  background: var(--writes);
 }
 
 .failed .what {
-  color: var(--red);
+  color: var(--writes);
 }
 
 @keyframes blink {

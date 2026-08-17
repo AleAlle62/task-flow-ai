@@ -7,6 +7,7 @@ import { runPipeline } from "../run/orchestrator.js";
 import { RunStore } from "../run/store/store.js";
 import { TerminalTaskAsker } from "../run/task-asker.js";
 import { startDashboard, type Dashboard } from "../server/http.js";
+import type { PlannedPhase } from "../server/session.js";
 import { parseArgs } from "../util/args.js";
 import { confirm } from "../util/confirm.js";
 import { ConfigError } from "../util/guards.js";
@@ -46,7 +47,9 @@ export async function run(argv: string[]): Promise<number> {
   line(dim(describeFlow(pipeline).join("\n")));
 
   const resumeId = await offerToResume(projectDir);
-  const dashboard = await openDashboard();
+  const dashboard = await openDashboard(
+    pipeline.phases.map(({ id, output, canWrite }) => ({ id, output, canWrite })),
+  );
 
   try {
     const store = resumeId
@@ -120,10 +123,10 @@ async function resolveTask(
  * taken, so a second run in another project is not an error. If neither works
  * the run still happens — it just asks in the terminal.
  */
-async function openDashboard(): Promise<Dashboard | undefined> {
+async function openDashboard(plan: PlannedPhase[]): Promise<Dashboard | undefined> {
   for (const port of [PREFERRED_PORT, 0]) {
     try {
-      const dashboard = await startDashboard(port);
+      const dashboard = await startDashboard(port, plan);
 
       line();
       line(dim(`dashboard at ${dashboard.url}`));

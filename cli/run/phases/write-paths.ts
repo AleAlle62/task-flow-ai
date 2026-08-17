@@ -11,14 +11,9 @@ import { matchesAny } from "../../util/glob.js";
  * — the files are left exactly as the phase wrote them, because deciding on
  * your behalf to undo work is worse than telling you about it.
  */
-export function filesOutside(projectDir: string, patterns: string[]): string[] {
-  if (patterns.includes("**")) return [];
-
-  return changedFiles(projectDir).filter((file) => !matchesAny(file, patterns));
-}
 
 /** Everything git considers changed or new, ignored files excluded. */
-function changedFiles(projectDir: string): string[] {
+export function changedFiles(projectDir: string): string[] {
   try {
     const output = execFileSync("git", ["status", "--porcelain", "--untracked-files=all"], {
       cwd: projectDir,
@@ -34,6 +29,29 @@ function changedFiles(projectDir: string): string[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Files outside the fence that this phase is responsible for.
+ *
+ * `before` is the same list taken just before the phase ran, and subtracting it
+ * is the whole point: a project is very often dirty when a run starts — a
+ * half-finished edit, a stray note — and reporting those as violations would
+ * blame the phase for work you did yourself. Worse, it would do it every single
+ * run, which is how a warning stops being read.
+ */
+export function filesOutside(
+  projectDir: string,
+  patterns: string[],
+  before: string[] = [],
+): string[] {
+  if (patterns.includes("**")) return [];
+
+  const alreadyDirty = new Set(before);
+
+  return changedFiles(projectDir).filter(
+    (file) => !alreadyDirty.has(file) && !matchesAny(file, patterns),
+  );
 }
 
 /** git quotes paths containing unusual characters. */

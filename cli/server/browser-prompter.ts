@@ -64,11 +64,23 @@ export class BrowserPrompter implements GateAsker, TaskAsker {
     });
   }
 
-  /** False when nothing is being asked, so a stale click cannot approve anything. */
-  answer(approved: boolean, note: string): boolean {
+  /**
+   * False when nothing is being asked, so a stale click cannot approve
+   * anything — and false when the answer names a different phase than the one
+   * on the table.
+   *
+   * The phase has to be named because approval is not a generic yes. With two
+   * tabs open on the same run, the second still showing the plan while the
+   * first has already approved it, a click meant for the plan would otherwise
+   * land on whatever question opened next — an approval for one artifact
+   * spent on another, and this particular click is the one that lets an agent
+   * write to your code.
+   */
+  answer(phase: string, approved: boolean, note: string): boolean {
     const resolve = this.settleGate;
 
     if (!this.gateQuestion || !resolve) return false;
+    if (this.gateQuestion.phase !== phase) return false;
 
     this.gateQuestion = undefined;
     this.settleGate = undefined;

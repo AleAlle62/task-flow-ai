@@ -108,6 +108,7 @@ export class ClaudeCliProvider implements Provider {
       text,
       costUsd: numberOrUndefined(payload["total_cost_usd"]),
       durationMs: numberOrUndefined(payload["duration_ms"]),
+      ...countTokens(payload["usage"]),
       raw: payload,
     };
   }
@@ -231,4 +232,29 @@ function excerpt(text: string): string {
 
 function numberOrUndefined(value: unknown): number | undefined {
   return typeof value === "number" ? value : undefined;
+}
+
+/**
+ * How much the phase read and how much it wrote.
+ *
+ * The three input counts are added together because they are all context the
+ * model was given: tokens sent fresh, tokens read back from the cache, and
+ * tokens written into it. Reporting only `input_tokens` would show a phase that
+ * read your whole codebase as having read almost nothing, since nearly all of
+ * it arrives as a cache read.
+ */
+function countTokens(raw: unknown): { tokensIn?: number; tokensOut?: number } {
+  if (!isRecord(raw)) return {};
+
+  const tokensIn =
+    (numberOrUndefined(raw["input_tokens"]) ?? 0) +
+    (numberOrUndefined(raw["cache_read_input_tokens"]) ?? 0) +
+    (numberOrUndefined(raw["cache_creation_input_tokens"]) ?? 0);
+
+  const tokensOut = numberOrUndefined(raw["output_tokens"]);
+
+  return {
+    ...(tokensIn > 0 ? { tokensIn } : {}),
+    ...(tokensOut === undefined ? {} : { tokensOut }),
+  };
 }
