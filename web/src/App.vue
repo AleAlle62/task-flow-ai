@@ -27,7 +27,7 @@ async function decide(approved: boolean, note: string): Promise<void> {
 
 <template>
   <main>
-    <TaskForm v-if="!store.run" :steps="store.steps" @submit="store.start" />
+    <TaskForm v-if="!store.run" @submit="store.start" />
 
     <template v-else>
       <header class="bar">

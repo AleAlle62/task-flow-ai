@@ -4,11 +4,7 @@ import { computed } from "vue";
 import type { Step } from "@/stores/run";
 import { humanSeconds, useNow } from "@/composables/useNow";
 
-const props = defineProps<{
-  steps: Step[];
-  /** Before a run exists the strip is a promise, not progress. */
-  preview?: boolean;
-}>();
+const props = defineProps<{ steps: Step[] }>();
 
 const now = useNow();
 
@@ -39,7 +35,6 @@ function name(step: Step): string {
  * is indistinguishable from a pipeline that has died.
  */
 function state(step: Step): string {
-  if (props.preview) return "";
   if (step.waiting) return "waiting for you";
 
   switch (step.status) {
@@ -66,7 +61,7 @@ function classes(step: Step, index: number): Record<string, boolean> {
 </script>
 
 <template>
-  <ol class="stepper" :class="{ preview }">
+  <ol class="stepper">
     <li class="rail" aria-hidden="true">
       <span class="fill" :style="{ width: `${progress}%` }" />
     </li>
@@ -229,15 +224,6 @@ function classes(step: Step, index: number): Record<string, boolean> {
   text-decoration-color: var(--writes);
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
-}
-
-/* Nothing is happening yet, so nothing pretends to be. */
-.preview .mark {
-  border-color: var(--line);
-}
-
-.preview .name {
-  color: var(--dim);
 }
 
 .pulse {

@@ -1,18 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-
-import PhaseStepper from "@/components/PhaseStepper.vue";
-import type { Step } from "@/stores/run";
-
-const props = defineProps<{ steps: Step[] }>();
+import { ref } from "vue";
 
 const emit = defineEmits<{ submit: [task: string] }>();
 
 const task = ref("");
 const sending = ref(false);
-
-/** Computed, not read once: the flow arrives from the server after first paint. */
-const writer = computed(() => props.steps.find((step) => step.canWrite));
 
 function send(): void {
   if (task.value.trim() === "" || sending.value) return;
@@ -48,15 +40,6 @@ function send(): void {
       </footer>
     </div>
 
-    <div v-if="props.steps.length > 0" class="promise">
-      <p class="caption">
-        Then this happens. Only
-        <strong>{{ writer ? writer.id.replace(/-ai$/, "") : "one phase" }}</strong>
-        can change your code.
-      </p>
-
-      <PhaseStepper :steps="props.steps" preview />
-    </div>
   </section>
 </template>
 
@@ -142,25 +125,4 @@ footer {
   border-color: var(--accent);
 }
 
-.promise {
-  margin-top: 10px;
-  display: grid;
-  gap: 14px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line-soft);
-}
-
-.caption {
-  margin: 0;
-  font-size: 13px;
-  color: var(--dim);
-  text-wrap: pretty;
-}
-
-.caption strong {
-  font-family: var(--mono);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--writes);
-}
 </style>

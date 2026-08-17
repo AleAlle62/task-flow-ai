@@ -21,7 +21,7 @@
   ],
   "scripts": {
     "build": "npm run build:cli && npm run build:web",
-    "build:cli": "tsc",
+    "build:cli": "tsc && chmod +x dist/cli.js",
     "build:web": "npm run build --workspace @task-flow-ai/web",
     "dev": "tsx cli/cli.ts",
     "dev:web": "npm run dev --workspace @task-flow-ai/web",

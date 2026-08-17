@@ -154,6 +154,30 @@ The rule is checked in four separate places, at four different moments:
 
 The first three prevent. The last one only reports.
 
+## Is there a backend?
+
+There is, and it lives for exactly as long as your run does.
+
+- **It is one process, started by `run` and gone when the run ends.** Nothing is
+  installed, nothing listens between runs, and there is no account.
+- **It binds to `127.0.0.1` only.** No other machine can reach it, by
+  construction rather than by configuration.
+- **It holds no database.** A run is a directory of plain files under
+  `.taskflow/runs/<id>/` — one markdown file per phase, your gate answers, and
+  an append-only event log.
+- **Your code and your task never leave your machine**, except where they always
+  were going: to the agent you already have installed and signed in, on the
+  account you already pay for. This project adds no service of its own to send
+  anything to.
+- **Why it exists at all:** the pipeline has to stop and ask a person, and a
+  terminal is a poor place to read a page-long plan and decide. The server is
+  there to put that plan in a browser and carry one answer back. Turn it off and
+  the pipeline is unchanged — it asks in the terminal instead.
+
+So the "backend" is a local messenger between the part that runs phases and the
+page you read them on. If that sounds slight, it is meant to: the less it is,
+the less there is to trust.
+
 ## The dashboard, and the server behind it
 
 `run` starts a small HTTP server and opens your browser at it. The page is where
