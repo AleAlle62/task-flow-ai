@@ -7,41 +7,42 @@
  * pipeline that only runs on Claude Code. Each provider translates these five
  * words into whatever its own agent calls them.
  *
- * Adding a capability means adding it here and teaching every provider what it
- * means. That is deliberately a bigger decision than adding a provider.
- */
-export const CAPABILITIES = ["read", "search", "inspect", "execute", "write"] as const;
-
-export type Capability = (typeof CAPABILITIES)[number];
-
-/**
- * The two that can change the user's code, and the reason this file exists.
+ * One table, because a capability has exactly two facts attached to it — what
+ * it lets you do and whether it can change the user's code — and keeping those
+ * in three lists that must agree is how one of them ends up disagreeing.
  *
- * `execute` is here because running commands is writing: `echo x > file` and
- * `sed -i` change your project exactly as much as an editor does. Counting only
- * the obvious file-writing tools is how a pipeline ends up with five
- * "read-only" phases that can all rewrite your repository.
+ * `changesCode` is not the obvious flag it looks like. `execute` carries it
+ * because running commands is writing: `echo x > file` and `sed -i` change your
+ * project exactly as much as an editor does. Counting only the file-writing
+ * tools is how a pipeline ends up with five "read-only" phases that can all
+ * rewrite your repository. `inspect` is what those phases actually needed
+ * commands for, and a provider may only offer it if it can hold the command
+ * list down to reading; one that cannot simply does not grant it.
  *
- * `inspect` is the answer to what those phases actually needed commands for —
- * reading git history, grepping, listing — and a provider may only offer it if
- * it can hold the command list to those. One that cannot simply does not grant
- * it.
+ * Adding a capability means adding a row here and teaching every provider what
+ * it means. That is deliberately a bigger decision than adding a provider.
  */
-export const WRITING_CAPABILITIES = new Set<Capability>(["execute", "write"]);
+export const CAPABILITIES = {
+  read: { help: "open files in the project", changesCode: false },
+  search: { help: "find files and text across the project", changesCode: false },
+  inspect: { help: "run read-only commands (git history, grep, listing)", changesCode: false },
+  execute: { help: "run any command — CHANGES YOUR CODE", changesCode: true },
+  write: { help: "create and modify files — CHANGES YOUR CODE", changesCode: true },
+} as const;
 
-/** What each word means, printed when someone declares one that does not exist. */
-export const CAPABILITY_HELP: Record<Capability, string> = {
-  read: "open files in the project",
-  search: "find files and text across the project",
-  inspect: "run read-only commands (git history, grep, listing)",
-  execute: "run any command — CHANGES YOUR CODE",
-  write: "create and modify files — CHANGES YOUR CODE",
-};
+export type Capability = keyof typeof CAPABILITIES;
+
+export const CAPABILITY_NAMES = Object.keys(CAPABILITIES) as Capability[];
 
 export function isCapability(value: string): value is Capability {
-  return (CAPABILITIES as readonly string[]).includes(value);
+  return Object.hasOwn(CAPABILITIES, value);
 }
 
 export function changesCode(capabilities: Capability[]): boolean {
-  return capabilities.some((capability) => WRITING_CAPABILITIES.has(capability));
+  return capabilities.some((capability) => CAPABILITIES[capability].changesCode);
+}
+
+/** The capability list as a person needs to read it, for an error message. */
+export function describeCapabilities(): string {
+  return CAPABILITY_NAMES.map((name) => `  ${name.padEnd(8)} ${CAPABILITIES[name].help}`).join("\n");
 }

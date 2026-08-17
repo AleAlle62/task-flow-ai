@@ -23,16 +23,14 @@ export interface FindingsPolicy {
  * A phase file in `agents/`, once read. `capabilities` is the security boundary
  * of the whole tool, not a preference: it is what stops a phase from writing.
  *
- * `declaredTools` is the same file's `tools:` line, kept because these files are
- * also loaded directly by Claude Code as subagent definitions, which reads that
- * line and not this one. Nothing in the pipeline acts on it — it is metadata for
- * a different reader, and `validate` prints both so a disagreement is visible.
+ * The same files also carry a `tools:` line, which some agents read when they
+ * load them as their own subagent definitions. This tool ignores it: what a
+ * phase may do is decided here and enforced by the provider.
  */
 export interface Agent {
   id: string;
   description: string;
   capabilities: Capability[];
-  declaredTools: string[];
   prompt: string;
   file: string;
 }

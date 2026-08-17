@@ -2,7 +2,7 @@ import type { RunStatus } from "../model/run.js";
 import type { Phase } from "../model/types.js";
 import type { RunContext } from "./context.js";
 import { decideCorrection, type LoopCounter } from "./phases/corrections.js";
-import { passGate } from "./gates/runner.js";
+import { passGate, type GateOutcome } from "./gates/runner.js";
 import type { Correction } from "./inputs/build.js";
 import { executePhase, phaseDurationMs } from "./phases/runner.js";
 import * as report from "./reporting.js";
@@ -32,6 +32,12 @@ export async function runPipeline(context: RunContext): Promise<RunStatus> {
 
     if (canSkip(phase, context, correction)) {
       report.phaseSkipped(phase.id);
+
+      if ((await gateOf(phase, context)) === "stopped") {
+        report.stopped(phase.id);
+        return "stopped";
+      }
+
       index++;
       continue;
     }
@@ -81,6 +87,22 @@ function canSkip(phase: Phase, context: RunContext, correction?: Correction): bo
     correction === undefined &&
     context.store.isPhaseComplete(phase.id, phase.output)
   );
+}
+
+/**
+ * A skipped phase still has to clear its gate.
+ *
+ * Finishing a phase and answering the gate that follows it are two events, and a
+ * run interrupted between them had done the first and not the second. Skipping
+ * the phase and its gate together let that gap through: the artifact was on
+ * disk, so the phase looked done, so nobody was ever asked — and the phase
+ * allowed to write started on a plan no human had approved.
+ *
+ * Asking again is not a risk here. `passGate` reads the answer off disk when
+ * there is one, so a gate already answered stays answered.
+ */
+function gateOf(phase: Phase, context: RunContext): Promise<GateOutcome> {
+  return passGate(phase, context.store.readArtifact(phase.output), context);
 }
 
 /**

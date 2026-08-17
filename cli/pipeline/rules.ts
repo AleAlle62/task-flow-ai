@@ -1,4 +1,4 @@
-import { WRITING_CAPABILITIES } from "../model/capabilities.js";
+import { CAPABILITIES } from "../model/capabilities.js";
 import { COMPUTED_INPUTS, GATE_INPUT_PREFIX, type Phase } from "../model/types.js";
 import { ConfigError } from "../util/guards.js";
 
@@ -90,7 +90,7 @@ function checkExactlyOnePhaseWrites(phases: Phase[], file: string): void {
 }
 
 function writingCapabilities(phase: Phase): string[] {
-  return phase.agent.capabilities.filter((capability) => WRITING_CAPABILITIES.has(capability));
+  return phase.agent.capabilities.filter((capability) => CAPABILITIES[capability].changesCode);
 }
 
 function isComputed(input: string): boolean {

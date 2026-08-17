@@ -9,22 +9,6 @@ const BIN = process.env["TASKFLOW_CLAUDE_BIN"] ?? "claude";
 const PREFLIGHT_TIMEOUT_MS = 15_000;
 
 /**
- * The translation, and the only place in the project where a Claude Code tool
- * name is written down.
- *
- * `inspect` maps to Bash, but Bash pre-approved for a fixed list of commands
- * rather than Bash outright — see READ_ONLY_COMMANDS. `execute` maps to the same
- * tool with nothing held back, which is why it counts as a writing capability.
- */
-const TOOLS: Record<Capability, string[]> = {
-  read: ["Read"],
-  search: ["Grep", "Glob"],
-  inspect: ["Bash"],
-  execute: ["Bash"],
-  write: ["Write", "Edit"],
-};
-
-/**
  * The commands a phase with `inspect` may run, and the reason `inspect` can be
  * offered at all.
  *
@@ -51,6 +35,30 @@ const READ_ONLY_COMMANDS = [
   "file",
   "tree",
 ];
+
+/**
+ * The translation, and the only place in the project where a Claude Code tool
+ * name is written down.
+ *
+ * Two columns because they are two different questions, and the answers are not
+ * the same list. `tools` is which tools exist for the phase at all — a phase
+ * without `write` has no Write to reach for. `allow` is what may be done with
+ * them without a prompt, which matters because in print mode a permission
+ * prompt is a failed tool call, not a question.
+ *
+ * `inspect` is where they come apart: the tool is Bash, the permission is Bash
+ * narrowed to the commands above. `execute` is the same tool with nothing held
+ * back, which is why it counts as a writing capability. A phase holding both
+ * ends up with the wide rule and the narrow ones together, and the wide one
+ * wins — an allowlist is a union, so there is nothing to disentangle.
+ */
+const CLAUDE_TOOLS: Record<Capability, { tools: string[]; allow: string[] }> = {
+  read: { tools: ["Read"], allow: ["Read"] },
+  search: { tools: ["Grep", "Glob"], allow: ["Grep", "Glob"] },
+  inspect: { tools: ["Bash"], allow: READ_ONLY_COMMANDS.map((command) => `Bash(${command}:*)`) },
+  execute: { tools: ["Bash"], allow: ["Bash"] },
+  write: { tools: ["Write", "Edit"], allow: ["Write", "Edit"] },
+};
 
 /**
  * Runs the Claude Code CLI once per phase, non-interactively.
@@ -121,6 +129,9 @@ export class ClaudeCliProvider implements Provider {
 /**
  * Only the writing phase gets edits applied without asking; the read-only
  * phases have no writing tool to approve in the first place.
+ *
+ * This list of arguments is the security boundary on this provider —
+ * everything else in the file is plumbing.
  */
 function buildArgs(request: PhaseRequest): string[] {
   const args = [
@@ -130,9 +141,9 @@ function buildArgs(request: PhaseRequest): string[] {
     "--system-prompt",
     request.instructions,
     "--tools",
-    toolNames(request.capabilities).join(","),
+    translate(request.capabilities, "tools").join(","),
     "--allowed-tools",
-    ...permissionRules(request.capabilities),
+    ...translate(request.capabilities, "allow"),
   ];
 
   if (request.model) args.push("--model", request.model);
@@ -141,37 +152,15 @@ function buildArgs(request: PhaseRequest): string[] {
   return args;
 }
 
-/** Which tools exist for this phase at all. */
-export function toolNames(capabilities: Capability[]): string[] {
-  return unique(capabilities.flatMap((capability) => TOOLS[capability]));
-}
-
 /**
- * What the phase may do with them, which is not the same list.
+ * One column of the table for one phase.
  *
- * `inspect` on its own becomes Bash narrowed to the read-only commands.
- * `execute` widens it back to all of Bash, so a phase holding both is not
- * accidentally restricted by the narrower of the two.
- *
- * Passed as separate arguments rather than one comma-joined string because the
- * rules contain spaces: `Bash(git log:*)` comma-joined would be split apart.
+ * The permission rules are passed as separate arguments rather than one
+ * comma-joined string because they contain spaces: `Bash(git log:*)`
+ * comma-joined would be split apart.
  */
-function permissionRules(capabilities: Capability[]): string[] {
-  const rules = capabilities
-    .filter((capability) => capability !== "inspect" && capability !== "execute")
-    .flatMap((capability) => TOOLS[capability]);
-
-  if (capabilities.includes("execute")) {
-    rules.push("Bash");
-  } else if (capabilities.includes("inspect")) {
-    rules.push(...READ_ONLY_COMMANDS.map((command) => `Bash(${command}:*)`));
-  }
-
-  return unique(rules);
-}
-
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
+function translate(capabilities: Capability[], column: "tools" | "allow"): string[] {
+  return [...new Set(capabilities.flatMap((capability) => CLAUDE_TOOLS[capability][column]))];
 }
 
 /**

@@ -4,8 +4,8 @@ import type { Correction } from "../inputs/build.js";
 
 /**
  * What to do about a phase that reported findings. Pure: it reads text and
- * returns a decision, so the rule can be understood, and later tested, without
- * a provider, a run directory or a terminal.
+ * returns a decision, so the rule can be understood without a provider, a run
+ * directory or a terminal.
  */
 export type CorrectionDecision =
   | { kind: "none" }

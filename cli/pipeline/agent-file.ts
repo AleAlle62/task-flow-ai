@@ -4,9 +4,9 @@ import { parse as parseYaml } from "yaml";
 
 import { PACKAGED_AGENTS_DIR, projectAgentsDir } from "../paths.js";
 import {
-  CAPABILITIES,
-  CAPABILITY_HELP,
+  CAPABILITY_NAMES,
   changesCode,
+  describeCapabilities,
   isCapability,
   type Capability,
 } from "../model/capabilities.js";
@@ -26,7 +26,7 @@ export function loadAgent(projectDir: string, id: string): Agent {
 
   if (!parts) {
     throw new ConfigError(
-      `${file}: missing frontmatter. A phase file opens with a "---" block declaring at least "tools".`,
+      `${file}: missing frontmatter. A phase file opens with a "---" block declaring "capabilities".`,
     );
   }
 
@@ -41,7 +41,6 @@ export function loadAgent(projectDir: string, id: string): Agent {
     id,
     description: typeof header["description"] === "string" ? header["description"] : "",
     capabilities: parseCapabilities(header["capabilities"], file),
-    declaredTools: parseList(header["tools"]) ?? [],
     prompt,
     file,
   };
@@ -95,7 +94,7 @@ function parseCapabilities(raw: unknown, file: string): Capability[] {
     throw new ConfigError(
       `${file}: "capabilities" is required in the frontmatter. It is what stops a phase\n` +
         `from writing to your code, so there is no default. Choose from:\n` +
-        CAPABILITIES.map((name) => `  ${name.padEnd(8)} ${CAPABILITY_HELP[name]}`).join("\n"),
+        describeCapabilities(),
     );
   }
 
@@ -105,7 +104,7 @@ function parseCapabilities(raw: unknown, file: string): Capability[] {
     throw new ConfigError(
       `${file}: unknown ${unknown.length === 1 ? "capability" : "capabilities"} ${unknown
         .map((item) => `"${item}"`)
-        .join(", ")}. Known: ${CAPABILITIES.join(", ")}.\n` +
+        .join(", ")}. Known: ${CAPABILITY_NAMES.join(", ")}.\n` +
         `These are not tool names — a provider translates them into its own.`,
     );
   }

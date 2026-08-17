@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="How the task-flow-ai repository is laid out: the four areas, the six-phase flow, and the one rule enforced in four places.">
+<title>Six Phases, One Writer</title>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; padding: 0; }
+  img, svg { display: block; max-width: 100%; }
+
+  :root {
+    --ground: #eef1f5;
+    --surface: #fbfcfd;
+    --ink: #141c25;
+    --muted: #5b6875;
+    --rule: #d2d9e2;
+    --rule-soft: #e2e7ed;
+    --accent: #285f8f;
+    --writes: #9c2b3c;
+    --writes-soft: rgba(156, 43, 60, 0.09);
+
+    --font-display: "Iowan Old Style", Charter, "Palatino Linotype", Palatino, Georgia, serif;
+    --font-body: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f141a;
+      --surface: #161d25;
+      --ink: #e3e9ef;
+      --muted: #94a2b0;
+      --rule: #29333e;
+      --rule-soft: #1e262f;
+      --accent: #78acdd;
+      --writes: #e67b8b;
+      --writes-soft: rgba(230, 123, 139, 0.13);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0f141a;
+    --surface: #161d25;
+    --ink: #e3e9ef;
+    --muted: #94a2b0;
+    --rule: #29333e;
+    --rule-soft: #1e262f;
+    --accent: #78acdd;
+    --writes: #e67b8b;
+    --writes-soft: rgba(230, 123, 139, 0.13);
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+  }
+
+  .prose { max-width: 40rem; }
+
+  /* Masthead */
+
+  .masthead { display: flex; flex-direction: column; gap: 1rem; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    line-height: 1.08;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    max-width: 16ch;
+  }
+
+  .standfirst {
+    font-size: 1.2rem;
+    color: var(--muted);
+    max-width: 44rem;
+    text-wrap: pretty;
+  }
+
+  .masthead-rule { height: 1px; background: var(--rule); }
+
+  /* Sections */
+
+  section { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  h2 .num {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  p { text-wrap: pretty; }
+
+  /* Figures */
+
+  figure {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 2rem 1.5rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow-x: auto;
+  }
+
+  figure svg {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-width: 30rem;
+    color: var(--ink);
+  }
+
+  figcaption {
+    font-size: 0.9rem;
+    color: var(--muted);
+    border-top: 1px solid var(--rule-soft);
+    padding-top: 1rem;
+    text-wrap: pretty;
+  }
+
+  .svg-label { font-family: var(--font-mono); font-size: 13px; fill: var(--ink); }
+  .svg-sub { font-family: var(--font-mono); font-size: 10.5px; fill: var(--muted); }
+  .svg-edge { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+  .svg-tag {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    fill: var(--writes);
+    letter-spacing: 0.09em;
+  }
+  .svg-moment {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    fill: var(--accent);
+    letter-spacing: 0.1em;
+  }
+  .node { fill: var(--surface); stroke: var(--rule); stroke-width: 1.5; }
+  .node-writes { fill: var(--writes-soft); stroke: var(--writes); stroke-width: 1.5; }
+  .flow { stroke: var(--ink); stroke-width: 1.5; opacity: 0.55; fill: none; }
+  .flow-loop { stroke: var(--accent); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+  .spine { stroke: var(--ink); stroke-width: 1.5; opacity: 0.2; }
+  .gate { fill: var(--accent); }
+
+  /* Tables */
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+
+  table { border-collapse: collapse; width: 100%; min-width: 38rem; }
+
+  th {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 400;
+    text-align: left;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.95rem 1.1rem;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 0.95rem;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  td.path {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  td.who { color: var(--muted); white-space: nowrap; }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.87em;
+    background: var(--rule-soft);
+    padding: 0.1em 0.35em;
+  }
+
+  /* The closing rule */
+
+  .rule-box {
+    border-left: 2px solid var(--writes);
+    background: var(--writes-soft);
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .rule-box p { max-width: 44rem; }
+
+  .rule-headline {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    line-height: 1.35;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">task-flow-ai · repository map</div>
+    <h1>Six phases, one writer</h1>
+    <p class="standfirst">
+      A coding task is split into six phases. Each one runs as a separate agent, reads only the files
+      the phases before it left behind, and gets handed only the permissions its job needs. Exactly
+      one of the six can change your code. Every folder in this repository exists to keep that
+      sentence true.
+    </p>
+    <div class="masthead-rule"></div>
+  </header>
+
+  <section>
+    <h2><span class="num">THE FOUR AREAS</span>What the repository is made of</h2>
+
+    <p class="prose">
+      Four areas, and the dependencies only ever point one way. The files you edit know nothing about
+      the engine; the engine knows nothing about the browser.
+    </p>
+
+    <figure>
+      <svg viewBox="0 0 880 200" role="img"
+        aria-label="Plain files are read by the engine, which the browser talks to over HTTP; a skill can invoke the engine from another agent. No arrow points backwards.">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" opacity="0.55" />
+          </marker>
+        </defs>
+
+        <rect class="node" x="330" y="14" width="210" height="46" rx="2" />
+        <text class="svg-label" x="435" y="34" text-anchor="middle">skills/</text>
+        <text class="svg-sub" x="435" y="50" text-anchor="middle">another agent invokes the pipeline</text>
+
+        <line class="flow" x1="435" y1="60" x2="435" y2="98" marker-end="url(#a1)" />
+        <text class="svg-edge" x="447" y="84">invokes</text>
+
+        <rect class="node" x="20" y="100" width="210" height="70" rx="2" />
+        <text class="svg-label" x="125" y="130" text-anchor="middle">agents/ · pipelines/</text>
+        <text class="svg-sub" x="125" y="150" text-anchor="middle">plain files you edit</text>
+
+        <rect class="node" x="330" y="100" width="210" height="70" rx="2" />
+        <text class="svg-label" x="435" y="130" text-anchor="middle">cli/</text>
+        <text class="svg-sub" x="435" y="150" text-anchor="middle">the engine</text>
+
+        <rect class="node" x="640" y="100" width="210" height="70" rx="2" />
+        <text class="svg-label" x="745" y="130" text-anchor="middle">web/</text>
+        <text class="svg-sub" x="745" y="150" text-anchor="middle">your browser</text>
+
+        <line class="flow" x1="230" y1="135" x2="322" y2="135" marker-end="url(#a1)" />
+        <text class="svg-edge" x="276" y="121" text-anchor="middle">reads them</text>
+        <text class="svg-edge" x="276" y="159" text-anchor="middle">at startup</text>
+
+        <line class="flow" x1="540" y1="135" x2="632" y2="135" marker-end="url(#a1)" />
+        <text class="svg-edge" x="586" y="121" text-anchor="middle">HTTP +</text>
+        <text class="svg-edge" x="586" y="159" text-anchor="middle">event stream</text>
+      </svg>
+      <figcaption>
+        Nothing points back. That is why swapping the agent underneath touches one folder, and why a
+        run works with the browser switched off.
+      </figcaption>
+    </figure>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Folder</th><th>Who it is for</th><th>Why it exists</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="path">agents/</td>
+            <td class="who">you</td>
+            <td>One markdown file per phase: the frontmatter declares what it may do, the body is its instructions.</td>
+          </tr>
+          <tr>
+            <td class="path">pipelines/</td>
+            <td class="who">you</td>
+            <td>One YAML file per pipeline: which phase runs when, what it reads, where it stops for a human.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/</td>
+            <td class="who">the tool</td>
+            <td>All the TypeScript — reads those files, runs the phases, keeps the result.</td>
+          </tr>
+          <tr>
+            <td class="path">web/</td>
+            <td class="who">the tool</td>
+            <td>The app served during a run, so you can watch it and answer a gate from a browser.</td>
+          </tr>
+          <tr>
+            <td class="path">skills/</td>
+            <td class="who">other agents</td>
+            <td>A <code>SKILL.md</code> that lets an agent invoke this pipeline the way it invokes anything else.</td>
+          </tr>
+          <tr>
+            <td class="path">dist/ · web-dist/</td>
+            <td class="who">nobody</td>
+            <td>Build output. Generated, never edited.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">THE FLOW</span>What actually happens during a run</h2>
+
+    <p class="prose">
+      Phases never talk to each other. Each one writes a file, and the next one reads it — which is
+      what lets a run be reread tomorrow, resumed after a crash, and watched by something that is not
+      this process.
+    </p>
+
+    <figure>
+      <svg viewBox="0 0 720 660" role="img"
+        aria-label="Six phases run top to bottom, each producing a file the next one reads. Only implement-ai can write. A gate stops the run after plan-ai and after security-ai, and blocking findings from review-ai send work back to implement-ai for at most two rounds.">
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" opacity="0.55" />
+          </marker>
+          <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" />
+          </marker>
+        </defs>
+
+        <rect class="node" x="60" y="30" width="280" height="54" rx="2" />
+        <text class="svg-label" x="76" y="54">intake-ai</text>
+        <text class="svg-sub" x="76" y="72">read · search</text>
+        <line class="flow" x1="200" y1="84" x2="200" y2="122" marker-end="url(#a2)" />
+        <text class="svg-edge" x="214" y="108">spec.md</text>
+
+        <rect class="node" x="60" y="130" width="280" height="54" rx="2" />
+        <text class="svg-label" x="76" y="154">explore-ai</text>
+        <text class="svg-sub" x="76" y="172">read · search · inspect</text>
+        <line class="flow" x1="200" y1="184" x2="200" y2="222" marker-end="url(#a2)" />
+        <text class="svg-edge" x="214" y="208">map.md</text>
+
+        <rect class="node" x="60" y="230" width="280" height="54" rx="2" />
+        <text class="svg-label" x="76" y="254">plan-ai</text>
+        <text class="svg-sub" x="76" y="272">read · search · inspect</text>
+        <line class="flow" x1="200" y1="284" x2="200" y2="322" marker-end="url(#a2)" />
+        <polygon class="gate" points="200,296 208,304 200,312 192,304" />
+        <text class="svg-edge" x="216" y="300">plan.md</text>
+        <text class="svg-moment" x="216" y="314">GATE · YOU APPROVE OR REJECT</text>
+
+        <rect class="node-writes" x="60" y="330" width="280" height="54" rx="2" />
+        <text class="svg-label" x="76" y="354">implement-ai</text>
+        <text class="svg-sub" x="76" y="372">read · search · write · execute</text>
+        <text class="svg-tag" x="324" y="354" text-anchor="end">WRITES</text>
+        <line class="flow" x1="200" y1="384" x2="200" y2="422" marker-end="url(#a2)" />
+        <text class="svg-edge" x="214" y="408">report.md</text>
+
+        <rect class="node" x="60" y="430" width="280" height="54" rx="2" />
+        <text class="svg-label" x="76" y="454">review-ai</text>
+        <text class="svg-sub" x="76" y="472">read · search · inspect</text>
+        <line class="flow" x1="200" y1="484" x2="200" y2="522" marker-end="url(#a2)" />
+        <text class="svg-edge" x="214" y="508">review.md</text>
+
+        <rect class="node" x="60" y="530" width="280" height="54" rx="2" />
+        <text class="svg-label" x="76" y="554">security-ai</text>
+        <text class="svg-sub" x="76" y="572">read · search · inspect</text>
+        <line class="flow" x1="200" y1="584" x2="200" y2="608" marker-end="url(#a2)" />
+        <polygon class="gate" points="200,592 208,600 200,608 192,600" />
+        <text class="svg-edge" x="216" y="596">security.md</text>
+        <text class="svg-moment" x="216" y="610">GATE · YOU ACCEPT OR SEND BACK</text>
+
+        <path class="flow-loop" d="M 340 457 H 412 V 357 H 348" marker-end="url(#a3)" />
+        <text class="svg-edge" x="424" y="399">blocking findings</text>
+        <text class="svg-edge" x="424" y="415">go back, max 2 rounds</text>
+      </svg>
+      <figcaption>
+        The one red box is the whole security story: five phases can read your project and none of
+        them can change it, because the agent running them is never handed a tool that writes.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2><span class="num">THE ENGINE</span>Inside cli/</h2>
+
+    <p class="prose">
+      Each folder answers one question, and the split is what keeps the answers from leaking into
+      each other.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Folder</th><th>What it decides</th><th>Why it is separate</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="path">cli/model/</td>
+            <td>The words everything else agrees on: capabilities, phases, run state.</td>
+            <td>Nothing here reads a file or validates anything, so everyone can depend on it.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/pipeline/</td>
+            <td>Turning your YAML and markdown into those words — and refusing them when they are wrong.</td>
+            <td>Every “your file is broken” message lives here, and only here.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/providers/</td>
+            <td>Translating capabilities into one agent CLI's own flags.</td>
+            <td>The only place a vendor's tool name is written down. Swapping the agent underneath is this folder and nothing else.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/run/</td>
+            <td>Running a pipeline: order, gates, inputs, artifacts, corrections.</td>
+            <td>The largest area, split again below.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/commands/</td>
+            <td>What each terminal command does, one file per command.</td>
+            <td>Thin on purpose: parse arguments, call the engine, print.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/server/</td>
+            <td>The local HTTP server the browser talks to during a run.</td>
+            <td>A run works with the server switched off, so this folder is optional by construction.</td>
+          </tr>
+          <tr>
+            <td class="path">cli/util/</td>
+            <td>Small things with no opinions: spawning, globbing, frontmatter, arguments.</td>
+            <td>Anything here could be copied into another project unchanged.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Inside cli/run/</th><th>What it holds</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="path">phases/</td>
+            <td>Running one phase, and the rules around it: what it may write, when work goes back for a second round.</td>
+          </tr>
+          <tr>
+            <td class="path">gates/</td>
+            <td>Where a run stops and waits for a person, and how the answer is remembered so it is never asked twice.</td>
+          </tr>
+          <tr>
+            <td class="path">inputs/</td>
+            <td>Assembling what a phase gets to read — the task, earlier artifacts, the current diff.</td>
+          </tr>
+          <tr>
+            <td class="path">store/</td>
+            <td>One directory of plain files per run: artifacts, state, event log. This is what makes a run resumable and watchable.</td>
+          </tr>
+          <tr>
+            <td class="path">orchestrator.ts</td>
+            <td>Sits above those four and decides only what happens next.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Inside web/src/</th><th>What it holds</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="path">components/</td><td>One component per thing on screen: the flow, the artifacts, the gate, the log.</td></tr>
+          <tr><td class="path">stores/</td><td>The run as the browser sees it, fed by the event stream.</td></tr>
+          <tr><td class="path">api/</td><td>The HTTP client, and the shapes it expects back from <code>cli/server/</code>.</td></tr>
+          <tr><td class="path">lib/ · composables/</td><td>Small helpers: rendering markdown, keeping a clock ticking.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">THE BOUNDARY</span>One rule, checked in four places</h2>
+
+    <p class="prose">
+      Exactly one phase may change your code. It is not a note in a prompt — it is declared, checked,
+      enforced and verified again, at four different moments.
+    </p>
+
+    <figure>
+      <svg viewBox="0 0 900 190" role="img"
+        aria-label="The rule that one phase may write is declared in the agent files, checked by the pipeline rules before anything runs, enforced by the provider flags while it runs, and verified against the changed files after the writing phase finishes.">
+        <line class="spine" x1="100" y1="100" x2="790" y2="100" />
+
+        <circle class="gate" cx="100" cy="100" r="5" />
+        <text class="svg-moment" x="100" y="66" text-anchor="middle">WHEN YOU WRITE IT</text>
+        <text class="svg-label" x="100" y="132" text-anchor="middle">agents/*.md</text>
+        <text class="svg-sub" x="100" y="150" text-anchor="middle">declares what a phase may do</text>
+
+        <circle class="gate" cx="330" cy="100" r="5" />
+        <text class="svg-moment" x="330" y="66" text-anchor="middle">BEFORE ANYTHING RUNS</text>
+        <text class="svg-label" x="330" y="132" text-anchor="middle">cli/pipeline/rules.ts</text>
+        <text class="svg-sub" x="330" y="150" text-anchor="middle">refuses a second writing phase</text>
+
+        <circle class="gate" cx="560" cy="100" r="5" />
+        <text class="svg-moment" x="560" y="66" text-anchor="middle">WHILE IT RUNS</text>
+        <text class="svg-label" x="560" y="132" text-anchor="middle">cli/providers/</text>
+        <text class="svg-sub" x="560" y="150" text-anchor="middle">hands over no tool that writes</text>
+
+        <circle cx="790" cy="100" r="5" fill="var(--writes)" />
+        <text class="svg-moment" x="790" y="66" text-anchor="middle" fill="var(--writes)">AFTER IT WRITES</text>
+        <text class="svg-label" x="790" y="132" text-anchor="middle">write-paths.ts</text>
+        <text class="svg-sub" x="790" y="150" text-anchor="middle">names files touched outside</text>
+      </svg>
+      <figcaption>
+        The fourth mark is a different colour because it is a different kind of check: the first three
+        prevent, the last one only reports. Files written outside the allowed paths are left exactly
+        as they are and named — undoing your work automatically would be worse than telling you.
+      </figcaption>
+    </figure>
+
+    <div class="rule-box">
+      <p class="rule-headline">
+        If you change one thing in this repository, change it knowing which of the four places you
+        are standing in.
+      </p>
+      <p>
+        Loosening the frontmatter of an agent file changes what a phase is allowed to ask for.
+        Loosening <code>rules.ts</code> changes what a pipeline is allowed to describe. Loosening the
+        provider changes what the agent is actually handed — and that is the only one of the three the
+        model can feel.
+      </p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
