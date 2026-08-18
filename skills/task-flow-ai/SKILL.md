@@ -5,6 +5,19 @@ description: Run a coding task through six separate phases — intake, explore, 
 
 # task-flow-ai
 
+**This is the shape of the pipeline, not its boundary.** Followed here, the six
+phases and the approval stop are a discipline you are keeping — there is no
+sandbox, no per-phase tool list, and nothing that *stops* a phase from writing
+except your own care in running it. The `task-flow-ai` CLI is where those exist:
+it hands each phase only its own tools, refuses any command a read-only phase
+was not granted, and has the filesystem itself refuse those phases a write
+anywhere in the project. If the user wants the guarantee rather than the shape,
+`npx @alealle62/task-flow-ai run` is the answer, and say so.
+
+So: keep the read-only phases read-only because you were asked to, and if one of
+them reports that it needed to write something, that is a finding to hand back —
+not a step to take.
+
 You are the orchestrator. You do not do the work of the phases yourself: you
 run each one as a separate subagent, save what it returns to disk, and hand the
 next phase nothing but the files it is entitled to.

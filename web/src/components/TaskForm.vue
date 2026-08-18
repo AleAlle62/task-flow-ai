@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const props = defineProps<{ compact?: boolean }>();
+/** `busy` is owned by the store: only it knows when the task was taken. */
+const props = defineProps<{ compact?: boolean; busy?: boolean }>();
 
 const emit = defineEmits<{ submit: [task: string] }>();
 
 const task = ref("");
-const sending = ref(false);
 
 function send(): void {
-  if (task.value.trim() === "" || sending.value) return;
+  if (task.value.trim() === "" || props.busy === true) return;
 
-  sending.value = true;
   emit("submit", task.value.trim());
 }
 </script>
@@ -36,8 +35,8 @@ function send(): void {
 
       <footer>
         <span class="shortcut">⌘ ↵</span>
-        <button class="go" :disabled="sending || task.trim() === ''" @click="send">
-          {{ sending ? "Starting…" : "Start" }}
+        <button class="go" :disabled="props.busy || task.trim() === ''" @click="send">
+          {{ props.busy ? "Starting…" : "Start" }}
         </button>
       </footer>
     </div>

@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "task-flow-ai",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Runs a coding task through six separate phases — intake, explore, plan, implement, review, security — each as a fresh subagent that reads only the artifacts written before it. Stops after the plan and waits for your approval.",
   "author": {
     "name": "AleAlle62"

@@ -33,7 +33,7 @@ async function decide(approved: boolean, note: string): Promise<void> {
 
 <template>
   <main>
-    <TaskForm v-if="!store.run" @submit="store.start" />
+    <TaskForm v-if="!store.run" :busy="store.starting" @submit="store.start" />
 
     <template v-else>
       <header class="bar">
@@ -63,7 +63,7 @@ async function decide(approved: boolean, note: string): Promise<void> {
 
       <GatePanel v-if="store.gate" :gate="store.gate" @decide="decide" />
 
-      <TaskForm v-if="store.needsTask" compact @submit="store.start" />
+      <TaskForm v-if="store.needsTask" compact :busy="store.starting" @submit="store.start" />
 
       <p v-if="stale" class="error">
         That question had already been answered — this page was out of date.

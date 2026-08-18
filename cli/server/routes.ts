@@ -3,6 +3,7 @@ import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { streamEvents } from "./event-stream.js";
+import { SAFE_HEADERS } from "./headers.js";
 import type { Session } from "./session.js";
 import { tokenMatches, type Tickets } from "./token.js";
 
@@ -69,7 +70,7 @@ export async function handle(
 
     case "GET /api/events":
       if (!session.store) return send(response, 409, { error: "no run yet" });
-      streamEvents(path.join(session.store.dir, "events.jsonl"), response);
+      streamEvents(() => eventLogOf(context), response);
       return;
 
     case "GET /api/artifact":
@@ -169,6 +170,16 @@ async function answerGate(
   send(response, accepted ? 200 : 409, { accepted });
 }
 
+/**
+ * Where the events are *now*. A run ends and the next one begins in a different
+ * directory, and a stream opened during the first should follow the second.
+ */
+function eventLogOf(context: RouteContext): string | undefined {
+  const dir = context.session.store?.dir;
+
+  return dir === undefined ? undefined : path.join(dir, "events.jsonl");
+}
+
 function serveArtifact(name: string | null, response: ServerResponse, context: RouteContext): void {
   const store = context.session.store;
 
@@ -179,7 +190,7 @@ function serveArtifact(name: string | null, response: ServerResponse, context: R
 
   if (!store?.hasArtifact(name)) return send(response, 404, { error: "no such artifact" });
 
-  response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+  response.writeHead(200, { ...SAFE_HEADERS, "content-type": "text/plain; charset=utf-8" });
   response.end(store.readArtifact(name));
 }
 
@@ -216,12 +227,6 @@ function serveApp(pathname: string, response: ServerResponse, context: RouteCont
   response.end(fs.readFileSync(file));
 }
 
-const SAFE_HEADERS = {
-  "x-content-type-options": "nosniff",
-  "referrer-policy": "no-referrer",
-  "x-frame-options": "DENY",
-};
-
 function contentType(file: string): string {
   const types: Record<string, string> = {
     ".html": "text/html; charset=utf-8",
@@ -244,6 +249,7 @@ function contentType(file: string): string {
  */
 function refuseBody(request: IncomingMessage, response: ServerResponse): void {
   response.writeHead(413, {
+    ...SAFE_HEADERS,
     "content-type": "application/json; charset=utf-8",
     connection: "close",
   });
@@ -252,7 +258,7 @@ function refuseBody(request: IncomingMessage, response: ServerResponse): void {
 }
 
 function send(response: ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+  response.writeHead(status, { ...SAFE_HEADERS, "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(body));
 }
 

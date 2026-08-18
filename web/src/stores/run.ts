@@ -58,10 +58,12 @@ export const useRunStore = defineStore("run", () => {
   const events = ref<RunEvent[]>([]);
   const gate = ref<PendingGate | null>(null);
   const needsTask = ref(false);
+  const starting = ref(false);
   const error = ref<string | undefined>();
 
   let stopStream: (() => void) | undefined;
   let timer: number | undefined;
+  let inFlight: Promise<void> | undefined;
 
   const phases = computed(() => run.value?.phases ?? []);
 
@@ -110,13 +112,36 @@ export const useRunStore = defineStore("run", () => {
 
   const isOver = computed(() => run.value !== null && run.value.status !== "running");
 
-  async function refresh(): Promise<void> {
+  /**
+   * One refresh at a time.
+   *
+   * Every event asks for one and so does the timer, and each is three requests;
+   * a phase that finishes while the timer fires used to send six and let
+   * whichever answered last win. Callers still get a promise that resolves when
+   * the state is current — it is just the same one.
+   */
+  function refresh(): Promise<void> {
+    if (inFlight) return inFlight;
+
+    inFlight = load().finally(() => {
+      inFlight = undefined;
+    });
+
+    return inFlight;
+  }
+
+  async function load(): Promise<void> {
     try {
       const [state, question, awaiting] = await Promise.all([
         fetchRun(),
         fetchGate(),
         isAwaitingTask(),
       ]);
+
+      /* A different run is a different story: its log starts again from the
+       * first line, and keeping the last one's on screen would read as one
+       * long run that never ended. */
+      if (state?.id !== run.value?.id) events.value = [];
 
       run.value = state;
       gate.value = question;
@@ -132,7 +157,7 @@ export const useRunStore = defineStore("run", () => {
   /** The event stream only exists once a run does. */
   function follow(): void {
     stopStream = streamEvents((event) => {
-      events.value = [...events.value, event];
+      events.value.push(event);
       if (event.type.startsWith("gate_") || event.type.startsWith("phase_")) void refresh();
     });
   }
@@ -171,9 +196,25 @@ export const useRunStore = defineStore("run", () => {
     if (timer !== undefined) window.clearInterval(timer);
   }
 
-  async function start(task: string): Promise<void> {
-    await submitTask(task);
-    await refresh();
+  /**
+   * False when the run was not asking for a task — a form submitted a moment
+   * too late. The flag is here rather than in the form because the form has no
+   * way of knowing, and left to itself it sat on "Starting…" for good.
+   */
+  async function start(task: string): Promise<boolean> {
+    starting.value = true;
+
+    try {
+      const accepted = await submitTask(task);
+
+      await refresh();
+
+      if (!accepted) error.value = "That task was not picked up — the run had already moved on.";
+
+      return accepted;
+    } finally {
+      starting.value = false;
+    }
   }
 
   /** False when the run had already moved on — a click arriving too late. */
@@ -194,6 +235,7 @@ export const useRunStore = defineStore("run", () => {
     events,
     gate,
     needsTask,
+    starting,
     error,
     phases,
     steps,

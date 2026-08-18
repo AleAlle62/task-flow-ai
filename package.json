@@ -8,7 +8,7 @@
     "task-flow-ai": "dist/cli.js"
   },
   "files": [
-    "dist",
+    "dist/**/*.js",
     "web-dist",
     "pipelines",
     "agents"

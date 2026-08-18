@@ -51,8 +51,8 @@ export function runCommand(
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { cwd: options.cwd, stdio: ["pipe", "pipe", "pipe"] });
 
-    let stdout = "";
-    let stderr = "";
+    const out = new Chunks();
+    const err = new Chunks();
     let timedOut = false;
     let tooLoud = false;
 
@@ -69,13 +69,11 @@ export function runCommand(
     };
 
     child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
-      if (stdout.length > MAX_OUTPUT_BYTES && !tooLoud) stop();
+      if (out.add(chunk) > MAX_OUTPUT_BYTES && !tooLoud) stop();
     });
 
     child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
-      if (stderr.length > MAX_OUTPUT_BYTES && !tooLoud) stop();
+      if (err.add(chunk) > MAX_OUTPUT_BYTES && !tooLoud) stop();
     });
 
     child.on("error", (err) => {
@@ -96,12 +94,40 @@ export function runCommand(
         return;
       }
 
-      resolve({ stdout, stderr, code: code ?? 1 });
+      resolve({ stdout: out.text(), stderr: err.text(), code: code ?? 1 });
     });
 
     ignoreBrokenPipe(child);
     child.stdin.end(options.input ?? "");
   });
+}
+
+/**
+ * What a stream said, kept as bytes until the very end.
+ *
+ * Decoding each chunk as it arrives looks equivalent and is not: a chunk
+ * boundary falls wherever the pipe happens to break, which is regularly in the
+ * middle of a multi-byte character, and each one of those becomes a replacement
+ * character in the artifact. Measured: ~800 KB of accented text came back with
+ * 24 characters destroyed. Joining the bytes first makes the boundary a
+ * non-event, and it also makes the size limit a count of bytes rather than of
+ * UTF-16 units, which is what it always claimed to be.
+ */
+class Chunks {
+  private readonly parts: Buffer[] = [];
+  private size = 0;
+
+  /** Returns the total byte length so far, so the caller can cap it. */
+  add(chunk: Buffer): number {
+    this.parts.push(chunk);
+    this.size += chunk.length;
+
+    return this.size;
+  }
+
+  text(): string {
+    return Buffer.concat(this.parts).toString("utf8");
+  }
 }
 
 /**

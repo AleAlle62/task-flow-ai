@@ -23,9 +23,14 @@ export async function passGate(
   const record = gateRecordName(phase.id);
 
   if (context.resuming && store.hasArtifact(record)) {
-    return wasApproved(store.readArtifact(record), gate.options[0] as string)
-      ? "continue"
-      : "stopped";
+    if (wasApproved(store.readArtifact(record), gate.options[0] as string)) return "continue";
+
+    /* Answered no yesterday, so the answer stands — but the run has just been
+     * reopened as "running", and leaving it that way is what made a refusal
+     * come back around at the next start. */
+    store.finish("stopped");
+
+    return "stopped";
   }
 
   store.events.append("gate_opened", { phase: phase.id, artifact: phase.output });

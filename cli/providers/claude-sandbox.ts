@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 /**
  * The walls around a phase's shell, expressed as Claude Code settings.
  *
@@ -47,11 +50,12 @@ const SECRETS = [
 /**
  * Places a phase must not be able to change, whatever it was asked to do.
  *
- * Not a fence around your project — `denyWrite` wins over `allowWrite`, so
- * naming a parent directory here would lock the project itself as well
- * (verified the hard way: it blocked writes inside the working directory too).
- * These are the paths where a write is never part of a coding task and always
- * the start of something else: credentials, shell startup, login items.
+ * Not a fence around your project — for the writing phase, `denyWrite` wins
+ * over `allowWrite`, so naming a parent directory here would lock the project
+ * itself as well (verified the hard way: it blocked writes inside the working
+ * directory too). These are the paths where a write is never part of a coding
+ * task and always the start of something else: credentials, shell startup,
+ * login items.
  */
 const NEVER_WRITE = [
   ...SECRETS,
@@ -76,18 +80,48 @@ const NEVER_WRITE = [
  * `allowUnsandboxedCommands: false` closes the other door — without it the
  * agent can ask for a command to be run outside the sandbox, which would make
  * every rule above a suggestion.
+ *
+ * `autoAllowBashIfSandboxed: false` is the one that took a run to find.
+ * It defaults to *true*, which means turning the sandbox on also stops Claude
+ * Code from checking the per-command permission rules: being walled in is
+ * treated as reason enough to let any command through. So the very setting
+ * added to make the read-only phases safer was what handed them a full shell —
+ * verified by running `echo x > file` in a phase allowed only `ls` and `cat`,
+ * which succeeded with the sandbox on and was refused with it off. Off, a
+ * command outside the list needs a permission prompt, and in `--print` mode a
+ * prompt is a failed tool call, which is what turns the list into a wall.
  */
-export function sandboxSettings(): string {
+export function sandboxSettings(canWrite: boolean, projectDir: string): string {
   return JSON.stringify({
     sandbox: {
       enabled: true,
       failIfUnavailable: true,
       allowUnsandboxedCommands: false,
+      autoAllowBashIfSandboxed: false,
       network: NO_NETWORK,
       filesystem: {
         denyRead: SECRETS,
-        denyWrite: NEVER_WRITE,
+        denyWrite: canWrite ? NEVER_WRITE : [...NEVER_WRITE, realPath(projectDir)],
       },
     },
   });
+}
+
+/**
+ * The project itself, denied to every phase that is not the one allowed to
+ * write. The permission rules already say a read-only phase may only run
+ * commands that read; this says it a second time, in the one place a mistaken
+ * rule cannot argue with — the filesystem. Two locks rather than one, because
+ * the first lock turned out to have a default that opened it.
+ *
+ * Resolved through any symlinks first: the sandbox matches real paths, and on
+ * macOS a project under `/tmp` is really under `/private/tmp`, so a fence
+ * written the short way would quietly cover nothing.
+ */
+function realPath(dir: string): string {
+  try {
+    return fs.realpathSync(dir);
+  } catch {
+    return path.resolve(dir);
+  }
 }

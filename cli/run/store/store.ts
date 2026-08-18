@@ -16,6 +16,26 @@ import * as files from "./files.js";
  * That is what lets a run be reread tomorrow, resumed after a crash, and
  * watched by something that is not this process.
  */
+/**
+ * Whether a run can still be picked up. Absent means the directory holds no
+ * run at all, which is not something to offer and not something to keep.
+ */
+function resumable(status: RunStatus | undefined): boolean {
+  return status === "running" || status === "failed";
+}
+
+/**
+ * Whether a run reached an end and may therefore be swept away.
+ *
+ * Stated as what it *is* rather than as "not resumable", because the two differ
+ * on the case that matters: a directory holding no run at all is neither, and
+ * this decides a `rm -rf`. Not offering to continue something we cannot read is
+ * caution; deleting it would be the opposite.
+ */
+function hasEnded(status: RunStatus | undefined): boolean {
+  return status === "done" || status === "stopped";
+}
+
 export class RunStore {
   readonly dir: string;
   readonly events: EventLog;
@@ -74,34 +94,44 @@ export class RunStore {
     return store;
   }
 
-  /** The most recent run that never reached an end, if there is one. */
+  /**
+   * The most recent run worth offering to continue, if there is one.
+   *
+   * Only a run that was interrupted qualifies. A run you *stopped* — read the
+   * plan, said no — reached its end as surely as one that finished: offering it
+   * back meant being asked the same question at the start of every run in that
+   * project forever, and saying yes only replayed the refusal off disk and
+   * stopped again, without ever clearing the flag.
+   *
+   * A directory with no `run.json` is not a run at all — a half-deleted one, a
+   * stray folder — and used to be offered anyway, which turned a yes into a
+   * crash.
+   */
   static lastUnfinished(projectDir: string): string | undefined {
     return files
       .listRunIds(projectDir)
-      .find((id) => files.readState(files.runDirectory(projectDir, id))?.status !== "done");
+      .find((id) => resumable(files.readState(files.runDirectory(projectDir, id))?.status));
   }
 
   /**
    * Removes finished runs beyond the most recent `keep`, oldest first.
    *
-   * A run that never reached "done" is never touched, however old — it may be
-   * the one thing someone means to resume. Returns the ids removed, newest
-   * first, so a caller can report exactly what went.
+   * Finished means reached an end, which includes the ones you stopped: saying
+   * no to a plan is an outcome, and a run left out of every sweep because of it
+   * is a directory that only ever accumulates. A run still running or failed
+   * mid-way is never touched, however old — it may be the one thing someone
+   * means to resume. Returns the ids removed, newest first.
    */
   static prune(projectDir: string, keep: number): string[] {
     const finished = files
       .listRunIds(projectDir)
-      .filter((id) => files.readState(files.runDirectory(projectDir, id))?.status === "done");
+      .filter((id) => hasEnded(files.readState(files.runDirectory(projectDir, id))?.status));
 
     const toRemove = finished.slice(keep);
 
     for (const id of toRemove) files.removeRunDirectory(projectDir, id);
 
     return toRemove;
-  }
-
-  get id(): string {
-    return this.state.id;
   }
 
   get current(): Readonly<RunState> {

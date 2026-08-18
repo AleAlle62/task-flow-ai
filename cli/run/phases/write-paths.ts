@@ -23,9 +23,8 @@ export function changedFiles(projectDir: string): string[] {
 
     return output
       .split("\n")
-      .map((entry) => entry.slice(3).trim())
-      .filter((path) => path !== "")
-      .map(unquote);
+      .filter((entry) => entry.trim() !== "")
+      .flatMap(pathsIn);
   } catch {
     return [];
   }
@@ -52,6 +51,25 @@ export function filesOutside(
   return changedFiles(projectDir).filter(
     (file) => !alreadyDirty.has(file) && !matchesAny(file, patterns),
   );
+}
+
+/**
+ * The file names in one line of `git status --porcelain`.
+ *
+ * Usually one. A rename is written `R  old -> new` and is two: both places were
+ * touched, and both belong in the answer. Read as a single name, that line
+ * produced the string "old -> new", which matches no pattern anybody would
+ * write and so was reported as a violation every time — a warning that fires
+ * on a correct rename is a warning people learn to skip.
+ */
+function pathsIn(entry: string): string[] {
+  const renamed = /^[RC]|^.[RC]/.test(entry.slice(0, 2));
+  const rest = entry.slice(3).trim();
+  const arrow = rest.indexOf(" -> ");
+
+  if (!renamed || arrow === -1) return [unquote(rest)].filter((path) => path !== "");
+
+  return [rest.slice(0, arrow), rest.slice(arrow + 4)].map(unquote).filter((path) => path !== "");
 }
 
 /** git quotes paths containing unusual characters. */

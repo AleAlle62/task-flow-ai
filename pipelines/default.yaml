@@ -8,8 +8,8 @@
 # pipeline itself — the same six phases in the same order hold whatever is
 # below them.
 #
-#   - the provider comes from --provider or your own configuration
-#   - the model comes from --model or the provider's own default
+#   - the agent underneath is the one you already have installed
+#   - the model comes from --model or the agent's own default
 #   - what each phase may do is declared in agents/<id>.md, on the
 #     "capabilities" line, which is what stops five phases out of six from
 #     changing your code. Those are this tool's own words, not any product's
@@ -22,7 +22,8 @@ defaults:
   timeout: 600 # seconds a single phase may run before it is killed
 
 # The only paths the writing phase may touch, relative to the target project.
-# Anything outside this list is refused. Enforced from step 2 of the build.
+# Checked after that phase runs, not prevented: anything it touched outside this
+# list is named for you and left exactly as it was written.
 write_paths:
   - "**"
 

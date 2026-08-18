@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { clean } from "./commands/clean.js";
+import { packageVersion } from "./paths.js";
 import { run } from "./commands/run.js";
 import { ProviderError } from "./providers/index.js";
 import { ConfigError, errorMessage } from "./util/guards.js";
@@ -21,8 +22,6 @@ dashboard takes a free port, and a pipeline at .taskflow/pipeline.yaml is used
 instead of the packaged one.
 `;
 
-const VERSION = "0.1.0";
-
 async function main(argv: string[]): Promise<number> {
   const command = argv[0];
 
@@ -35,7 +34,7 @@ async function main(argv: string[]): Promise<number> {
 
     case "--version":
     case "-v":
-      process.stdout.write(`${VERSION}\n`);
+      process.stdout.write(`${packageVersion()}\n`);
       return 0;
 
     case "run":

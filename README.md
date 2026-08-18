@@ -22,8 +22,10 @@ flowchart LR
     class STOP gate
 ```
 
-Only **implement** can change your code. The other five never get a tool that
-writes, so it is not a rule they are asked to follow.
+Only **implement** can change your code. One of the other five has no writing
+tool at all; the four that need a shell to read — `git log`, `grep`, `cat` —
+are refused a write anywhere in your project by the filesystem itself. It is
+not a rule any of them is asked to follow.
 
 ## Install
 
@@ -114,20 +116,29 @@ finished runs and never touches one still unfinished.
 
 ## The boundary
 
-One phase may change your code, checked in five places:
+One phase may change your code, checked in six places:
 
 | When | What happens |
 | --- | --- |
 | you write a phase | it declares what it may do |
 | before anything runs | a pipeline with two writing phases is refused |
 | while a phase runs | it is handed only its own tools |
+| every command it runs | only the ones its phase was granted, with no exception for being sandboxed |
 | around every command | no network, no credentials, no machine startup files |
-| after the writing phase | files touched outside the allowed paths are named |
+| for the five that only read | the filesystem refuses them a write anywhere in your project |
 
 The sandbox is the one that matters most: allowing `cat` says nothing about
 `cat ~/.ssh/id_rsa`, and the writing phase has to run your tests, which means
 commands nobody listed in advance. So it runs walled in — a phase talked into
 running `curl` runs it, and it fails.
+
+The last two rows are there because of what turning the sandbox on used to do.
+Claude Code treats being sandboxed as reason enough to stop checking which
+commands a phase may run, and that is its default, so switching the wall on
+quietly switched the list off: a phase allowed `ls` and `cat` could run
+anything, and four of the five read-only phases hold a shell. Both rows now
+say no independently — one at the permission layer, one at the filesystem —
+because the lock that failed here was a default nobody had to change.
 
 ## Before you rely on it
 
@@ -139,7 +150,7 @@ running `curl` runs it, and it fails.
   you approve. Read it.
 - **Write paths are checked after the fact**, not prevented.
 - **The dashboard is local only.** It binds to `127.0.0.1`.
-- **Version 0.1.0.**
+- **Version 0.1.2.**
 
 ## The repository
 

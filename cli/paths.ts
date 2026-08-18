@@ -2,11 +2,32 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isRecord } from "./util/guards.js";
+
 /**
  * Where the packaged files live, whether we run from `dist/` after a build or
  * straight from `src/` under tsx. Both sit one level below the package root.
  */
 export const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * Written down once, in package.json, and read from there.
+ *
+ * Kept as a second copy in the source it did what second copies do: the CLI
+ * announced 0.1.0 for two releases after the package had moved on, and the
+ * number a person quotes in a bug report was the wrong one.
+ */
+export function packageVersion(): string {
+  try {
+    const parsed: unknown = JSON.parse(
+      fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"),
+    );
+
+    return isRecord(parsed) && typeof parsed["version"] === "string" ? parsed["version"] : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 
 export const DEFAULT_PIPELINE = path.join(packageRoot, "pipelines", "default.yaml");
 

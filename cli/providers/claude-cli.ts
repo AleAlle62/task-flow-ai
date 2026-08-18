@@ -179,7 +179,7 @@ function buildArgs(request: PhaseRequest): string[] {
     "--output-format",
     "json",
     "--settings",
-    sandboxSettings(),
+    sandboxSettings(request.canWrite, request.cwd),
     "--system-prompt",
     request.instructions,
     "--tools",
