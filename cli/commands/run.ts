@@ -1,4 +1,6 @@
-import { DEFAULT_PIPELINE, projectPipeline } from "../paths.js";
+import path from "node:path";
+
+import { DEFAULT_PIPELINE, projectCustomisations, projectPipeline } from "../paths.js";
 import { describeFlow } from "../pipeline/describe.js";
 import { loadPipeline } from "../pipeline/load.js";
 import { resolveProvider } from "../providers/index.js";
@@ -38,7 +40,14 @@ export async function run(argv: string[]): Promise<number> {
   const { positional, flags } = parseArgs(argv, OPTIONS);
 
   const projectDir = process.cwd();
-  const pipeline = loadPipeline(projectPipeline(projectDir) ?? DEFAULT_PIPELINE, projectDir);
+  const own = await useProjectFlow(projectDir);
+
+  const pipeline = loadPipeline(
+    own ? (projectPipeline(projectDir) ?? DEFAULT_PIPELINE) : DEFAULT_PIPELINE,
+    projectDir,
+    own,
+  );
+
   const provider = resolveProvider();
 
   await provider.preflight();
@@ -85,6 +94,33 @@ export async function run(argv: string[]): Promise<number> {
 }
 
 /**
+ * Whether to run this project's own phases, if it brought any.
+ *
+ * A `.taskflow/` directory decides which phases exist and what each one is
+ * told to do, and it arrives with the project: cloning a repository is enough
+ * to put one on your disk. Using it because it is there would mean a
+ * repository could rewrite the pipeline that is about to read it — so it is
+ * shown, named file by file, and it is off unless you say yes.
+ */
+async function useProjectFlow(projectDir: string): Promise<boolean> {
+  const files = projectCustomisations(projectDir);
+  if (files.length === 0) return false;
+
+  line();
+  line(bold("This project brings its own pipeline files:"));
+  for (const file of files) line(dim(`  ${path.relative(projectDir, file)}`));
+
+  const yes = await confirm(
+    "Run the project's version instead of the packaged one?",
+    "These files decide which phases run and what each one is told to do. Answering no runs the packaged pipeline.",
+  );
+
+  if (!yes) line(dim("Using the packaged pipeline."));
+
+  return yes;
+}
+
+/**
  * An unfinished run in this project is offered rather than waited for.
  *
  * Continuing is almost always what you want — the phases that finished are paid
@@ -128,9 +164,13 @@ async function openDashboard(plan: PlannedPhase[]): Promise<Dashboard | undefine
     try {
       const dashboard = await startDashboard(port, plan);
 
+      /* One ticket for the browser and a second one printed, because a ticket
+       * works once: if the browser does not open, the address on screen still
+       * lets you in. */
+      openInBrowser(dashboard.url());
+
       line();
-      line(dim(`dashboard at ${dashboard.url}`));
-      openInBrowser(dashboard.url);
+      line(dim(`dashboard at ${dashboard.url()}`));
 
       return dashboard;
     } catch {

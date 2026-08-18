@@ -572,6 +572,13 @@
         provider changes what the agent is actually handed — and that is the only one of the three the
         model can feel.
       </p>
+      <p>
+        There is a fifth mark this drawing does not show, because it sits around all of them:
+        <code>cli/providers/claude-sandbox.ts</code>, which is where every phase's shell loses the
+        network, the ability to read your credentials, and the ability to write to the files that
+        decide how your machine starts. Deciding which commands may run says nothing about what
+        those commands can reach.
+      </p>
     </div>
   </section>
 

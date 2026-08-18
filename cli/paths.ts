@@ -27,6 +27,29 @@ export function projectPipeline(projectDir: string): string | undefined {
   return fs.existsSync(file) ? file : undefined;
 }
 
+/**
+ * Everything in this project that would replace part of the packaged pipeline.
+ *
+ * Listed so it can be shown to a person before any of it runs. These files
+ * arrive with the project — cloning a repository is enough to put them on your
+ * disk — and they decide which phases exist and what each one is told to do.
+ * Picking them up because they happen to be there is how you end up running
+ * instructions written by whoever wrote the repository.
+ */
+export function projectCustomisations(projectDir: string): string[] {
+  const pipeline = projectPipeline(projectDir);
+  const agentsDir = projectAgentsDir(projectDir);
+
+  const agents = fs.existsSync(agentsDir)
+    ? fs
+        .readdirSync(agentsDir)
+        .filter((entry) => entry.endsWith(".md"))
+        .map((entry) => path.join(agentsDir, entry))
+    : [];
+
+  return [...(pipeline ? [pipeline] : []), ...agents];
+}
+
 export function runsDir(projectDir: string): string {
   return path.join(projectDir, ".taskflow", "runs");
 }

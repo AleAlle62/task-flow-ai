@@ -16,7 +16,7 @@ export class BrowserPrompter implements GateAsker, TaskAsker {
   private wantsTask = false;
   private settleTask?: (task: string) => void;
 
-  constructor(private readonly url: string) {}
+  constructor(private readonly url: () => string) {}
 
   get question(): GateQuestion | undefined {
     return this.gateQuestion;
@@ -31,7 +31,7 @@ export class BrowserPrompter implements GateAsker, TaskAsker {
 
     line();
     line(bold("Waiting for you to say what should be done"));
-    line(dim(`  ${this.url}`));
+    line(dim(`  ${this.url()}`));
 
     return new Promise<string>((resolve) => {
       this.settleTask = resolve;
@@ -57,7 +57,7 @@ export class BrowserPrompter implements GateAsker, TaskAsker {
 
     line();
     line(`${bold("waiting for you")} ${dim(`· ${question.phase}`)}`);
-    line(dim(`  ${this.url}`));
+    line(dim(`  ${this.url()}`));
 
     return new Promise<GateAnswer>((resolve) => {
       this.settleGate = resolve;

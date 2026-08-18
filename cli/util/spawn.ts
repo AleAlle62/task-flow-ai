@@ -23,6 +23,19 @@ export class CommandTimeout extends Error {
   }
 }
 
+export class CommandTooLoud extends Error {
+  constructor(limitMb: number) {
+    super(`produced more than ${limitMb} MB of output and was killed`);
+    this.name = "CommandTooLoud";
+  }
+}
+
+/**
+ * A phase writes one document. Anything past this is a loop, not an artifact,
+ * and holding it in memory to find that out helps nobody.
+ */
+const MAX_OUTPUT_BYTES = 32 * 1024 * 1024;
+
 /** How long a process gets to die politely before it is killed outright. */
 const GRACE_MS = 5_000;
 
@@ -41,6 +54,7 @@ export function runCommand(
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let tooLoud = false;
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -48,12 +62,20 @@ export function runCommand(
       setTimeout(() => child.kill("SIGKILL"), GRACE_MS).unref();
     }, options.timeoutMs);
 
+    const stop = () => {
+      tooLoud = true;
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), GRACE_MS).unref();
+    };
+
     child.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
+      if (stdout.length > MAX_OUTPUT_BYTES && !tooLoud) stop();
     });
 
     child.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
+      if (stderr.length > MAX_OUTPUT_BYTES && !tooLoud) stop();
     });
 
     child.on("error", (err) => {
@@ -63,10 +85,17 @@ export function runCommand(
 
     child.on("close", (code) => {
       clearTimeout(timer);
+
       if (timedOut) {
         reject(new CommandTimeout(Math.round(options.timeoutMs / 1000)));
         return;
       }
+
+      if (tooLoud) {
+        reject(new CommandTooLoud(Math.round(MAX_OUTPUT_BYTES / 1024 / 1024)));
+        return;
+      }
+
       resolve({ stdout, stderr, code: code ?? 1 });
     });
 

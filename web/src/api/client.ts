@@ -3,11 +3,39 @@ import type { PendingGate, PlannedPhase, RunEvent, RunState } from "./types";
 /**
  * The only place in the dashboard that knows the server exists.
  *
- * The token comes from the address the CLI opened. Without it every request is
- * refused, which is what stops another page in this browser from answering a
- * gate on your behalf.
+ * Without the token every request is refused, which is what stops another page
+ * in this browser from answering a gate on your behalf. It is never in the
+ * address: the CLI opens this page with a one-time ticket, `openSession` trades
+ * that ticket for the token, and the address is wiped straight afterwards. A
+ * reload finds the token in session storage; a fresh address needs a fresh
+ * ticket, which the CLI prints every time it asks you something.
  */
-const token = new URLSearchParams(window.location.search).get("t") ?? "";
+const STORED = "taskflow.token";
+
+let token = sessionStorage.getItem(STORED) ?? "";
+
+export async function openSession(): Promise<boolean> {
+  const ticket = new URLSearchParams(window.location.search).get("k");
+
+  if (ticket) {
+    const response = await fetch("/api/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ticket }),
+    });
+
+    if (response.ok) {
+      token = ((await response.json()) as { token: string }).token;
+      sessionStorage.setItem(STORED, token);
+    }
+
+    /* Out of the address bar, and so out of history, screenshots and anything
+     * the page might hand to somebody else. */
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+
+  return token !== "";
+}
 
 /** Null until the run exists — the page opens before anything is decided. */
 export async function fetchRun(): Promise<RunState | null> {

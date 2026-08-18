@@ -4,11 +4,12 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { streamEvents } from "./event-stream.js";
 import type { Session } from "./session.js";
-import { tokenMatches } from "./token.js";
+import { tokenMatches, type Tickets } from "./token.js";
 
 export interface RouteContext {
   session: Session;
   token: string;
+  tickets: Tickets;
   webRoot: string;
   /** The addresses this dashboard is served from, for the Origin check. */
   origins: string[];
@@ -36,6 +37,12 @@ export async function handle(
   if (!url.pathname.startsWith("/api/")) return serveApp(url.pathname, response, context);
 
   if (!sameOrigin(request, context.origins)) return send(response, 403, { error: "bad origin" });
+
+  /* The one endpoint a page can reach before it holds anything: it arrives with
+   * a ticket from the address it was opened at, and leaves with the token. */
+  if (`${request.method} ${url.pathname}` === "POST /api/session") {
+    return openSession(request, response, context);
+  }
 
   if (!authorised(request, url, context.token)) return send(response, 403, { error: "bad token" });
 
@@ -106,6 +113,30 @@ function authorised(request: IncomingMessage, url: URL, token: string): boolean 
   return tokenMatches(token, given);
 }
 
+/**
+ * Trades a one-time ticket for the session token.
+ *
+ * The ticket is spent here and never works again, so the address the browser
+ * was opened at — which is also in the terminal and in the arguments of the
+ * command that opened it — is worthless a second later. The token itself is
+ * only ever in the page's memory.
+ */
+async function openSession(
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: RouteContext,
+): Promise<void> {
+  const body = await readJson(request);
+
+  if (!body) return refuseBody(request, response);
+
+  const ticket = typeof body["ticket"] === "string" ? body["ticket"] : undefined;
+
+  if (!context.tickets.redeem(ticket)) return send(response, 403, { error: "bad ticket" });
+
+  send(response, 200, { token: context.token });
+}
+
 async function submitTask(
   request: IncomingMessage,
   response: ServerResponse,
@@ -141,7 +172,8 @@ async function answerGate(
 function serveArtifact(name: string | null, response: ServerResponse, context: RouteContext): void {
   const store = context.session.store;
 
-  if (!name || name.includes("/") || name.includes("..")) {
+  /* Backslash is a separator too, on the platform where it is one. */
+  if (!name || /[/\\]/.test(name) || name.includes("..")) {
     return send(response, 400, { error: "bad artifact name" });
   }
 
@@ -151,27 +183,44 @@ function serveArtifact(name: string | null, response: ServerResponse, context: R
   response.end(store.readArtifact(name));
 }
 
-/** The built Vue app, or a plain message when it has not been built yet. */
+/**
+ * The built Vue app, or a plain message when it has not been built yet.
+ *
+ * Served without a token, because this is where the page that will hold the
+ * token comes from. What is served carries nothing of yours — it is the same
+ * bundle for every run — and the headers say so: nothing about the run is in
+ * it, nothing may frame it, and no address of ours is passed on as a referrer,
+ * which is what keeps a ticket out of somebody else's logs.
+ */
 function serveApp(pathname: string, response: ServerResponse, context: RouteContext): void {
-  const file = path.join(context.webRoot, pathname === "/" ? "index.html" : pathname.slice(1));
+  const requested = pathname === "/" ? "index.html" : pathname.slice(1);
+  const file = path.join(context.webRoot, requested);
+  const index = path.join(context.webRoot, "index.html");
 
-  if (!file.startsWith(context.webRoot) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-    const index = path.join(context.webRoot, "index.html");
+  const inside = file === context.webRoot || file.startsWith(context.webRoot + path.sep);
+  const readable = inside && fs.existsSync(file) && !fs.statSync(file).isDirectory();
 
+  if (!readable) {
     if (!fs.existsSync(index)) {
-      response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      response.writeHead(200, { ...SAFE_HEADERS, "content-type": "text/plain; charset=utf-8" });
       response.end("The dashboard has not been built yet. Run: npm run build:web\n");
       return;
     }
 
-    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.writeHead(200, { ...SAFE_HEADERS, "content-type": "text/html; charset=utf-8" });
     response.end(fs.readFileSync(index));
     return;
   }
 
-  response.writeHead(200, { "content-type": contentType(file) });
+  response.writeHead(200, { ...SAFE_HEADERS, "content-type": contentType(file) });
   response.end(fs.readFileSync(file));
 }
+
+const SAFE_HEADERS = {
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "x-frame-options": "DENY",
+};
 
 function contentType(file: string): string {
   const types: Record<string, string> = {

@@ -20,8 +20,8 @@ import { splitFrontmatter } from "../util/frontmatter.js";
  * any agent that loads markdown definitions — the body becomes the system
  * prompt, the frontmatter declares the capabilities.
  */
-export function loadAgent(projectDir: string, id: string): Agent {
-  const file = resolveAgentFile(projectDir, id);
+export function loadAgent(projectDir: string, id: string, useProjectCopy = true): Agent {
+  const file = resolveAgentFile(projectDir, id, useProjectCopy);
   const parts = splitFrontmatter(fs.readFileSync(file, "utf8"));
 
   if (!parts) {
@@ -50,10 +50,15 @@ export function canWrite(agent: Agent): boolean {
   return changesCode(agent.capabilities);
 }
 
-/** A project's own copy of a phase wins over the packaged one. */
-function resolveAgentFile(projectDir: string, id: string): string {
+/**
+ * A project's own copy of a phase wins over the packaged one — but only once
+ * someone has said it may. These files come with the project, and a phase file
+ * is a set of instructions to an agent, so running one nobody chose to run is
+ * running a stranger's prompt.
+ */
+function resolveAgentFile(projectDir: string, id: string, useProjectCopy: boolean): string {
   const override = path.join(projectAgentsDir(projectDir), `${id}.md`);
-  if (fs.existsSync(override)) return override;
+  if (useProjectCopy && fs.existsSync(override)) return override;
 
   const packaged = path.join(PACKAGED_AGENTS_DIR, `${id}.md`);
   if (fs.existsSync(packaged)) return packaged;

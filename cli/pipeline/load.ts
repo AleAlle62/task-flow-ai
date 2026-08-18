@@ -18,9 +18,11 @@ import { readPipelineSpec, type PhaseSpec } from "./schema.js";
  * Step 3 sits between the other two on purpose: the rules need the agent files
  * to decide who may write, and that answer must never come from the YAML.
  */
-export function loadPipeline(file: string, projectDir: string): Pipeline {
+export function loadPipeline(file: string, projectDir: string, useProjectAgents = true): Pipeline {
   const spec = readPipelineSpec(readYamlFile(file), file);
-  const phases = spec.phases.map((phaseSpec) => attachAgent(phaseSpec, projectDir));
+  const phases = spec.phases.map((phaseSpec) =>
+    attachAgent(phaseSpec, projectDir, useProjectAgents),
+  );
 
   checkAll(phases, file);
 
@@ -40,7 +42,7 @@ function readYamlFile(file: string): unknown {
   }
 }
 
-function attachAgent(spec: PhaseSpec, projectDir: string): Phase {
-  const agent = loadAgent(projectDir, spec.id);
+function attachAgent(spec: PhaseSpec, projectDir: string, useProjectAgents: boolean): Phase {
+  const agent = loadAgent(projectDir, spec.id, useProjectAgents);
   return { ...spec, agent, canWrite: canWrite(agent) };
 }

@@ -18,7 +18,13 @@ export function openInBrowser(url: string): void {
   if (!opener) return;
 
   try {
-    spawn(opener, [url], { stdio: "ignore", detached: true }).unref();
+    const child = spawn(opener, [url], { stdio: "ignore", detached: true });
+
+    /* A missing opener is reported on this event, not thrown — and an "error"
+     * event nobody listens for is an uncaught exception, which would take down
+     * a run for the sake of a browser window that was never essential. */
+    child.on("error", () => {});
+    child.unref();
   } catch {
     // The URL is on screen; that is enough.
   }

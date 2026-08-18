@@ -1,5 +1,6 @@
 import type { Capability } from "../model/capabilities.js";
-import { CommandTimeout, runCommand, type CommandResult } from "../util/spawn.js";
+import { sandboxSettings } from "./claude-sandbox.js";
+import { CommandTimeout, CommandTooLoud, runCommand, type CommandResult } from "../util/spawn.js";
 import { isRecord } from "../util/guards.js";
 import { ProviderError, type PhaseRequest, type PhaseResult, type Provider } from "./types.js";
 
@@ -121,7 +122,9 @@ export class ClaudeCliProvider implements Provider {
         timeoutMs: request.timeoutMs,
       });
     } catch (err) {
-      if (err instanceof CommandTimeout) throw new ProviderError(`phase ${err.message}`);
+      if (err instanceof CommandTimeout || err instanceof CommandTooLoud) {
+        throw new ProviderError(`phase ${err.message}`);
+      }
       throw err;
     }
   }
@@ -139,6 +142,8 @@ function buildArgs(request: PhaseRequest): string[] {
     "--print",
     "--output-format",
     "json",
+    "--settings",
+    sandboxSettings(),
     "--system-prompt",
     request.instructions,
     "--tools",

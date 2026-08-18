@@ -101,6 +101,12 @@ Written plainly, so you find out here rather than later:
 - **It runs on Claude Code and nothing else.** The engine is written against a
   provider contract with one implementation. Another agent means writing an
   adapter — see below.
+- **It needs a working sandbox.** If Claude Code cannot start one on your
+  machine, the run stops instead of going ahead without it. That is deliberate:
+  the sandbox is where "no network, no credentials" is actually enforced.
+- **A project's own `.taskflow/` files are not used unless you say so.** They
+  decide which phases run and what each is told to do, and they arrive with the
+  repository, so the run names them and asks first.
 - **`write_paths` is checked after the fact, not enforced.** No agent CLI offers
   a reliable path whitelist, so a run that wrote outside its fence fails and
   names every file. Those files are left exactly as they were written. Changes
@@ -143,16 +149,52 @@ touch. On Claude Code that is a fixed allowlist — `git log`, `git diff`, `rg`,
 `ls`, `cat` and a dozen more. The conveniences are missing on purpose: `find`
 takes `-delete`, `sed` takes `-i`, and `awk` writes files on its own.
 
-The rule is checked in four separate places, at four different moments:
+The rule is checked in five separate places, at five different moments:
 
 | When | Where | What it does |
 | --- | --- | --- |
 | when you write it | `agents/*.md` | declares what a phase may do |
 | before anything runs | `cli/pipeline/rules.ts` | refuses a pipeline with two writing phases |
 | while it runs | `cli/providers/` | the agent is handed no tool that writes |
+| around every command | `cli/providers/claude-sandbox.ts` | the walls below |
 | after it writes | `cli/run/phases/write-paths.ts` | names files touched outside `write_paths` |
 
-The first three prevent. The last one only reports.
+The first four prevent. The last one only reports.
+
+### The walls around a shell
+
+Deciding *which commands* a phase may run says nothing about what those
+commands can reach once they are running. So every phase runs inside Claude
+Code's sandbox, with three things shut off:
+
+- **No network.** Not a domain allowlist with a few holes in it — an empty one.
+  No phase in this pipeline has any business making a request, and this is what
+  turns "a phase was talked into running curl" from a breach into a failed
+  command.
+- **No credentials.** `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.netrc`, cloud and
+  registry configs: reads are refused. The `inspect` capability grants `cat` and
+  `grep`, and those say nothing about *where* — without this, a phase described
+  as read-only could copy your private key into an artifact.
+- **No changing how your machine starts.** Shell rc files, login items and the
+  credential paths above cannot be written, whatever a phase was asked to do.
+
+Two smaller settings matter as much: the agent cannot ask for a command to be
+run outside the sandbox, and if the sandbox cannot start, the run stops rather
+than continuing without it. A boundary that quietly turns itself off is worse
+than no boundary, because you would still be trusting it.
+
+Every one of these was checked by running it rather than by reading the
+documentation — `curl` returns 200 without the sandbox and fails with it,
+`cat ~/.ssh/known_hosts` comes back "Operation not permitted", and `echo` still
+works, which is the part that makes the rest usable.
+
+### What is still only as strong as your attention
+
+The content of your project reaches the phases, and a file in it can contain
+sentences addressed to the agent. Phases are told that everything quoted to them
+is material and not instruction, and an artifact can no longer forge the
+markers that separate the two — but the plan is where this ends up, and the
+plan is the thing you approve. Read it. That is what the gate is for.
 
 ## Is there a backend?
 
@@ -191,10 +233,14 @@ answer the two gates.
   any page open in your browser can also reach `127.0.0.1`, and without a secret
   it does not know, a random site could answer a gate — that is, approve a plan
   that then writes to your code.
+- **The address carries a ticket, not the secret.** What the browser is opened
+  at — which is also in your terminal, and in the arguments of the command that
+  opened it, where anyone running `ps` can read it — works exactly once. The
+  page trades it for the token, wipes the address, and the token itself never
+  appears in an address bar or a process list. The terminal prints a fresh
+  ticket every time the run asks you something.
 - **A second lock on top of it.** A request whose `Origin` is some other site is
-  refused before the token is even read. The token travels in the address of the
-  page, which is the kind of thing that ends up in a screenshot or a pasted bug
-  report, so it should not be the only thing standing there.
+  refused before the token is even read.
 - **An approval names what it is approving.** The answer to a gate carries the
   phase it belongs to, and is refused if that is not the question on the table.
   With two tabs open, a click meant for the plan cannot land on whatever was

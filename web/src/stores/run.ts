@@ -7,6 +7,7 @@ import {
   fetchPlan,
   fetchRun,
   isAwaitingTask,
+  openSession,
   streamEvents,
   submitTask,
 } from "@/api/client";
@@ -136,7 +137,18 @@ export const useRunStore = defineStore("run", () => {
     });
   }
 
-  function connect(): void {
+  /**
+   * Nothing is asked for until the page holds the token: the first request
+   * would otherwise be refused and show an error for a page that is perfectly
+   * fine, just not let in yet.
+   */
+  async function connect(): Promise<void> {
+    if (!(await openSession())) {
+      error.value =
+        "This page was opened without a valid ticket. Tickets work once — use the address the terminal printed most recently.";
+      return;
+    }
+
     void loadPlan();
     void refresh();
     timer = window.setInterval(() => void refresh(), REFRESH_MS);
