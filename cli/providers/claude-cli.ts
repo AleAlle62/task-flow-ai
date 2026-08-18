@@ -1,5 +1,7 @@
 import type { Capability } from "../model/capabilities.js";
 import { sandboxSettings } from "./claude-sandbox.js";
+import { advice, classify, withRetry } from "../errors/retry.js";
+import { dim, line } from "../ui.js";
 import { CommandTimeout, CommandTooLoud, runCommand, type CommandResult } from "../util/spawn.js";
 import { isRecord } from "../util/guards.js";
 import { ProviderError, type PhaseRequest, type PhaseResult, type Provider } from "./types.js";
@@ -8,6 +10,11 @@ import { ProviderError, type PhaseRequest, type PhaseResult, type Provider } fro
 const BIN = process.env["TASKFLOW_CLAUDE_BIN"] ?? "claude";
 
 const PREFLIGHT_TIMEOUT_MS = 15_000;
+
+/** The first try plus two more: enough for a blip, short of a hang. */
+const ATTEMPTS = 3;
+
+const RETRY_BASE_MS = 2_000;
 
 /**
  * The commands a phase with `inspect` may run, and the reason `inspect` can be
@@ -91,7 +98,36 @@ export class ClaudeCliProvider implements Provider {
     }
   }
 
-  async run(request: PhaseRequest): Promise<PhaseResult> {
+  /**
+   * One phase, with the outside world's bad afternoons absorbed.
+   *
+   * The retry wraps the reading of the answer as well as the call itself, and
+   * that is the whole point: this CLI reports a dropped connection *inside* a
+   * perfectly successful process, as an error in its JSON. Retrying only the
+   * spawn would therefore retry none of the failures that are actually worth
+   * retrying.
+   *
+   * What is worth repeating is decided in `errors/`. A phase that ran out of
+   * time or drowned us in output is refused here whatever it looks like: it
+   * would only do the same again, more slowly.
+   */
+  run(request: PhaseRequest): Promise<PhaseResult> {
+    return withRetry(
+      () => this.once(request),
+      {
+        attempts: ATTEMPTS,
+        baseDelayMs: RETRY_BASE_MS,
+        onRetry: ({ attempt, of, waitMs, failure, detail }) => {
+          line();
+          line(dim(`  ${failure} — ${headline(detail)}`));
+          line(dim(`  trying again in ${Math.round(waitMs / 1000)}s (attempt ${attempt + 1} of ${of})`));
+        },
+      },
+      (error) => error instanceof CommandTimeout || error instanceof CommandTooLoud,
+    );
+  }
+
+  private async once(request: PhaseRequest): Promise<PhaseResult> {
     const result = await this.invoke(request);
     const payload = parseJsonResult(result);
 
@@ -198,15 +234,18 @@ async function isLoggedIn(): Promise<boolean | undefined> {
  */
 function describeFailure(text: string, stderr: string): ProviderError {
   const detail = text.trim() || stderr.trim() || "no details reported";
+  const hint = advice(classify(detail));
 
-  if (/authenticate|OAuth|API key|credit balance/i.test(detail)) {
-    return new ProviderError(
-      `provider "claude-cli" could not authenticate: ${detail}\n` +
-        `Run \`claude\` once, sign in, then start this run again.`,
-    );
-  }
+  return new ProviderError(
+    `provider "claude-cli" failed: ${detail}` + (hint ? `\n${hint}` : ""),
+  );
+}
 
-  return new ProviderError(`provider "claude-cli" failed: ${detail}`);
+/** Retry notices sit under a running phase, so they get one line, not a paragraph. */
+function headline(detail: string): string {
+  const first = detail.trim().split("\n")[0] ?? "";
+
+  return first.length > 110 ? `${first.slice(0, 107)}...` : first;
 }
 
 /** The CLI prints one JSON object, but tolerate anything printed before it. */

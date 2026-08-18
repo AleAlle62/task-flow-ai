@@ -211,6 +211,12 @@ There is, and it lives for exactly as long as your run does.
   were going: to the agent you already have installed and signed in, on the
   account you already pay for. This project adds no service of its own to send
   anything to.
+- **A dropped connection does not end a run.** Failures are sorted by kind:
+  a network blip or an overloaded API is tried again, twice, waiting longer each
+  time; an expired session or an empty balance is reported at once, with what to
+  do about it, because retrying those only makes you wait to hear the same
+  thing. Whatever does end a run, the phases that finished are on disk and are
+  not paid for twice.
 - **Why it exists at all:** the pipeline has to stop and ask a person, and a
   terminal is a poor place to read a page-long plan and decide. The server is
   there to put that plan in a browser and carry one answer back. Turn it off and
@@ -310,7 +316,7 @@ run the whole pipeline on it for real. Which is why the list is currently one.
 | [`skills/`](skills/) | The same pipeline offered as a skill to an agent that supports them. |
 | [`docs/`](docs/) | The page below. |
 
-Inside `cli/`: `model/` is the vocabulary everything agrees on, `pipeline/` turns
+Inside `cli/`: `model/` is the vocabulary everything agrees on, `errors/` decides what a failure is and whether trying again could help, `pipeline/` turns
 your files into it and refuses them when they are wrong, `providers/` is the only
 place a vendor's tool name is written down, `run/` executes a pipeline, and
 `server/` is the dashboard's other half.
