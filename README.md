@@ -31,15 +31,28 @@ Needs [Claude Code](https://claude.com/claude-code) installed and signed in, and
 Node 20 or newer.
 
 ```bash
-git clone https://github.com/AleAlle62/task-flow-ai
-cd task-flow-ai
-npm install && npm run build && npm link
+npm install -g @alealle62/task-flow-ai
 ```
 
-Or run it inside Claude Code as a plugin:
+Or, if you use an agent that reads skills — Claude Code, Cursor, Copilot and a
+dozen others — install it as one:
+
+```bash
+npx skills add https://github.com/AleAlle62/task-flow-ai
+```
+
+Or as a Claude Code plugin:
 
 ```bash
 claude plugin marketplace add AleAlle62/task-flow-ai
+```
+
+To work on it rather than with it, clone and build:
+
+```bash
+git clone https://github.com/AleAlle62/task-flow-ai
+cd task-flow-ai
+npm install && npm run build && npm link
 ```
 
 ## Use it
