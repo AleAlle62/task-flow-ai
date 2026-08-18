@@ -3,6 +3,7 @@ import type { Phase } from "../../model/types.js";
 import { errorMessage } from "../../util/guards.js";
 import type { RunContext } from "../context.js";
 import { buildPhaseInput, type Correction } from "../inputs/build.js";
+import { tidyArtifact } from "./artifact.js";
 
 /**
  * The result of one phase.
@@ -39,7 +40,9 @@ export async function executePhase(
       ...(context.model ? { model: context.model } : {}),
     });
 
-    store.writeArtifact(phase.output, result.text);
+    const text = tidyArtifact(result.text);
+
+    store.writeArtifact(phase.output, text);
     store.finishPhase(phase.id, {
       ...(result.costUsd === undefined ? {} : { costUsd: result.costUsd }),
       ...(result.tokensIn === undefined ? {} : { tokensIn: result.tokensIn }),
@@ -48,7 +51,7 @@ export async function executePhase(
 
     return {
       ok: true,
-      artifact: result.text,
+      artifact: text,
       ...(result.costUsd === undefined ? {} : { costUsd: result.costUsd }),
     };
   } catch (err) {

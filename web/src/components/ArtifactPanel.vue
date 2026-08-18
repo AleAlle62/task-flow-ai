@@ -5,7 +5,7 @@ import { fetchArtifact } from "@/api/client";
 import type { PhaseRecord } from "@/api/types";
 import MarkdownView from "@/components/MarkdownView.vue";
 
-const props = defineProps<{ phases: PhaseRecord[] }>();
+const props = defineProps<{ phases: PhaseRecord[]; showing?: string }>();
 
 const selected = ref<string | undefined>();
 const text = ref("");
@@ -28,42 +28,29 @@ async function show(name: string): Promise<void> {
 }
 
 /**
- * Follows the run: the newest finished artifact is what you want to see, unless
- * you have already picked one yourself.
+ * Follows the run until you take the wheel: the newest finished artifact is
+ * what you want to see, unless you have picked a phase from the steps above.
  */
-const touched = ref(false);
-
 watch(
-  () => readable.value.map((phase) => phase.output).join(),
-  (outputs) => {
+  [() => props.showing, () => readable.value.map((phase) => phase.output).join()],
+  ([picked, outputs]) => {
+    if (picked) {
+      if (picked !== selected.value) void show(picked);
+      return;
+    }
+
     if (outputs === "") return;
 
-    const latest = readable.value[readable.value.length - 1]!.output;
-
-    if (!touched.value) void show(latest);
-    else if (selected.value && !outputs.includes(selected.value)) void show(latest);
+    void show(readable.value[readable.value.length - 1]!.output);
   },
   { immediate: true },
 );
-
-function pick(name: string): void {
-  touched.value = true;
-  void show(name);
-}
 </script>
 
 <template>
   <section class="artifacts">
-    <nav>
-      <button
-        v-for="phase in readable"
-        :key="phase.output"
-        class="tab"
-        :class="{ on: phase.output === selected }"
-        @click="pick(phase.output)"
-      >
-        {{ phase.output }}
-      </button>
+    <nav v-if="selected">
+      <span class="which">{{ selected }}</span>
 
       <button v-if="text" class="tab raw" @click="raw = !raw">
         {{ raw ? "rendered" : "source" }}
@@ -91,6 +78,13 @@ nav {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.which {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--dim);
+  align-self: center;
 }
 
 .tab {

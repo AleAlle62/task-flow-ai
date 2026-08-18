@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 
 import ArtifactPanel from "@/components/ArtifactPanel.vue";
 import EventLog from "@/components/EventLog.vue";
@@ -12,6 +12,12 @@ import { useRunStore } from "@/stores/run";
 
 const store = useRunStore();
 const stale = ref(false);
+
+/** Which phase's document is on screen. Unset means: follow the run. */
+const showing = ref<string | undefined>();
+
+/** A new run is a clean slate: stop showing a document from the last one. */
+watch(() => store.run?.id, () => (showing.value = undefined));
 
 onMounted(() => store.connect());
 onUnmounted(() => store.disconnect());
@@ -36,7 +42,7 @@ async function decide(approved: boolean, note: string): Promise<void> {
           <p class="where tabular">{{ store.run.id }}</p>
         </div>
 
-        <PhaseStepper :steps="store.steps" />
+        <PhaseStepper :steps="store.steps" :showing="showing" @show="showing = $event" />
       </header>
 
       <NowLine
@@ -57,11 +63,13 @@ async function decide(approved: boolean, note: string): Promise<void> {
 
       <GatePanel v-if="store.gate" :gate="store.gate" @decide="decide" />
 
+      <TaskForm v-if="store.needsTask" compact @submit="store.start" />
+
       <p v-if="stale" class="error">
         That question had already been answered — this page was out of date.
       </p>
 
-      <ArtifactPanel :phases="store.phases" />
+      <ArtifactPanel :phases="store.phases" :showing="showing" />
 
       <details v-if="store.events.length > 0">
         <summary>Events</summary>

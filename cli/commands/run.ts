@@ -1,4 +1,5 @@
 import path from "node:path";
+import readline from "node:readline/promises";
 
 import { DEFAULT_PIPELINE, projectCustomisations, projectPipeline } from "../paths.js";
 import { describeFlow } from "../pipeline/describe.js";
@@ -61,33 +62,50 @@ export async function run(argv: string[]): Promise<number> {
   );
 
   try {
-    const store = resumeId
-      ? RunStore.open(projectDir, resumeId)
-      : RunStore.create({
-          projectDir,
-          task: await resolveTask(positional, dashboard),
-          pipeline: pipeline.source,
-          phases: pipeline.phases.map(({ id, output }) => ({ id, output })),
-        });
+    let resuming = resumeId !== undefined;
+    let task = resuming ? undefined : await resolveTask(positional, dashboard);
+    let code = 0;
 
-    dashboard?.session.attach(store);
-    announce(store, provider.id, resumeId !== undefined);
+    /* One pass per task. A run ends, its documents stay on screen, and the page
+     * can ask for the next thing without going back to the terminal. */
+    for (;;) {
+      const store =
+        resuming && resumeId
+          ? RunStore.open(projectDir, resumeId)
+          : RunStore.create({
+              projectDir,
+              task: task as string,
+              pipeline: pipeline.source,
+              phases: pipeline.phases.map(({ id, output }) => ({ id, output })),
+            });
 
-    const status = await runPipeline({
-      pipeline,
-      provider,
-      store,
-      projectDir,
-      asker: dashboard?.prompter ?? new TerminalAsker(),
-      resuming: resumeId !== undefined,
-      ...(flags["model"] ? { model: flags["model"] } : {}),
-    });
+      dashboard?.session.attach(store);
+      announce(store, provider.id, resuming);
 
-    if (status === "done") store.finish("done");
+      const status = await runPipeline({
+        pipeline,
+        provider,
+        store,
+        projectDir,
+        asker: dashboard?.prompter ?? new TerminalAsker(),
+        resuming,
+        ...(flags["model"] ? { model: flags["model"] } : {}),
+      });
 
-    summarise(status, store);
+      if (status === "done") store.finish("done");
 
-    return status === "failed" ? 1 : 0;
+      summarise(status, store);
+
+      code = status === "failed" ? 1 : 0;
+
+      if (!dashboard) return code;
+
+      const next = await anotherOrClose(dashboard);
+      if (next === undefined) return code;
+
+      task = next;
+      resuming = false;
+    }
   } finally {
     await dashboard?.close();
   }
@@ -182,6 +200,41 @@ async function openDashboard(plan: PlannedPhase[]): Promise<Dashboard | undefine
   line(dim("could not start the dashboard, asking here instead"));
 
   return undefined;
+}
+
+/**
+ * After the last phase: keep the documents on screen, and let the next task
+ * arrive from the page instead of from a new terminal command.
+ *
+ * A run ends at the moment its documents are finally all there, so closing the
+ * window right then is backwards — and having to go back to a terminal to ask
+ * the next question is a small tax on the thing people do most. Whichever comes
+ * first wins: a task typed on the page, or enter pressed here.
+ *
+ * Nobody at the keyboard means nobody to wait for, so an unattended run still
+ * ends when it ends.
+ */
+async function anotherOrClose(dashboard: Dashboard): Promise<string | undefined> {
+  line();
+  line(dim(`still readable at ${dashboard.url()}`));
+
+  if (process.stdin.isTTY !== true) return undefined;
+
+  line(dim("ask for another task there, or press enter to close"));
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const lines = rl[Symbol.asyncIterator]();
+
+  try {
+    return await Promise.race([
+      dashboard.prompter.askTask(),
+      lines.next().then(() => undefined),
+    ]);
+  } catch {
+    return undefined;
+  } finally {
+    rl.close();
+  }
 }
 
 function announce(store: RunStore, providerId: string, resuming: boolean): void {

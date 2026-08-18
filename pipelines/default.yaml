@@ -61,6 +61,10 @@ phases:
   - id: security-ai
     inputs: [diff]
     output: security.md
-    gate:
-      when: findings
-      options: [Accept as is, Fix]
+    # A vulnerability is sent back to be fixed, not handed to you to decide
+    # about. The same rule as the review above, and the same limit: after two
+    # rounds the problem is the plan, not the code.
+    on_findings:
+      severity: [critical, high]
+      goto: implement-ai
+      max_loops: 2

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+const props = defineProps<{ compact?: boolean }>();
+
 const emit = defineEmits<{ submit: [task: string] }>();
 
 const task = ref("");
@@ -15,9 +17,9 @@ function send(): void {
 </script>
 
 <template>
-  <section class="ask">
-    <h1>What should be done?</h1>
-    <p class="lede">
+  <section class="ask" :class="{ compact: props.compact }">
+    <h1>{{ props.compact ? "What next?" : "What should be done?" }}</h1>
+    <p v-if="!props.compact" class="lede">
       Describe it the way you would to a colleague. The first phase turns this into a
       specification, and you will read the plan before anything is written.
     </p>
@@ -49,6 +51,22 @@ function send(): void {
   gap: 18px;
   max-width: 680px;
   margin: 6vh auto 0;
+}
+
+/* Asking for the next task, with the finished one still on screen above it. */
+.ask.compact {
+  margin: 0;
+  max-width: none;
+  gap: 10px;
+}
+
+.ask.compact h1 {
+  font-size: 20px;
+}
+
+.ask.compact .sheet textarea {
+  min-height: 52px;
+  font-size: 15px;
 }
 
 h1 {

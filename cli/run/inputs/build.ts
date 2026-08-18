@@ -49,6 +49,10 @@ export function buildPhaseInput(
     ``,
     `Write the content of \`${phase.output}\` and nothing else. No preamble, no`,
     `closing summary, no commentary about the pipeline.`,
+    ``,
+    `Write it as plain markdown. Do not wrap the document in a code fence — code`,
+    `fences are for the code and commands you quote inside it, not for the`,
+    `document itself.`,
   ].join("\n");
 }
 

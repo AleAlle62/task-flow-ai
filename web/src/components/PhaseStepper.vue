@@ -4,7 +4,14 @@ import { computed } from "vue";
 import type { Step } from "@/stores/run";
 import { humanSeconds, useNow } from "@/composables/useNow";
 
-const props = defineProps<{ steps: Step[] }>();
+const props = defineProps<{ steps: Step[]; showing?: string }>();
+
+const emit = defineEmits<{ show: [output: string] }>();
+
+/** A step you can open is one that has already written something. */
+function readable(step: Step): boolean {
+  return step.status === "done";
+}
 
 const now = useNow();
 
@@ -54,6 +61,8 @@ function classes(step: Step, index: number): Record<string, boolean> {
     [step.status]: true,
     waiting: step.waiting,
     writes: step.canWrite,
+    readable: readable(step),
+    showing: step.output === props.showing,
     current: index === currentIndex.value,
     passed: currentIndex.value > -1 && index < currentIndex.value,
   };
@@ -72,12 +81,20 @@ function classes(step: Step, index: number): Record<string, boolean> {
       class="step"
       :class="classes(step, index)"
     >
-      <span class="mark" aria-hidden="true">
-        <span v-if="step.status === 'running' || step.waiting" class="pulse" />
-      </span>
+      <component
+        :is="readable(step) ? 'button' : 'span'"
+        class="hit"
+        :type="readable(step) ? 'button' : undefined"
+        :title="readable(step) ? `Read ${step.output}` : undefined"
+        @click="readable(step) && emit('show', step.output)"
+      >
+        <span class="mark" aria-hidden="true">
+          <span v-if="step.status === 'running' || step.waiting" class="pulse" />
+        </span>
 
-      <span class="name">{{ name(step) }}</span>
-      <span class="state tabular">{{ state(step) }}</span>
+        <span class="name">{{ name(step) }}</span>
+        <span class="state tabular">{{ state(step) }}</span>
+      </component>
     </li>
   </ol>
 </template>
@@ -126,6 +143,35 @@ function classes(step: Step, index: number): Record<string, boolean> {
 /* The step being watched takes the room it needs; the rest give it up. */
 .step.current {
   flex-grow: 1.6;
+}
+
+/* The whole step is the target, not the twelve pixels of the dot. */
+.hit {
+  all: unset;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.readable .hit {
+  cursor: pointer;
+}
+
+.readable .hit:hover .name {
+  color: var(--accent);
+}
+
+.showing .hit {
+  border-bottom-color: var(--accent);
+}
+
+.hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .mark {
