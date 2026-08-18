@@ -140,7 +140,8 @@ The phases are markdown files and the order is one YAML file — edit them witho
 touching code. Everything vendor-specific lives in one folder, which is why
 swapping the agent underneath touches only that.
 
-**[The illustrated map →](docs/index.html)** — every folder and why it exists.
+There is an illustrated map of the whole thing in [`docs/index.html`](docs/index.html)
+— clone the repo and open it in a browser, GitHub will only show you its source.
 
 ## License
 
