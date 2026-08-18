@@ -81,6 +81,25 @@ export class RunStore {
       .find((id) => files.readState(files.runDirectory(projectDir, id))?.status !== "done");
   }
 
+  /**
+   * Removes finished runs beyond the most recent `keep`, oldest first.
+   *
+   * A run that never reached "done" is never touched, however old — it may be
+   * the one thing someone means to resume. Returns the ids removed, newest
+   * first, so a caller can report exactly what went.
+   */
+  static prune(projectDir: string, keep: number): string[] {
+    const finished = files
+      .listRunIds(projectDir)
+      .filter((id) => files.readState(files.runDirectory(projectDir, id))?.status === "done");
+
+    const toRemove = finished.slice(keep);
+
+    for (const id of toRemove) files.removeRunDirectory(projectDir, id);
+
+    return toRemove;
+  }
+
   get id(): string {
     return this.state.id;
   }

@@ -108,7 +108,9 @@ was not already going. The page is served on your machine only and disappears
 when the run ends.
 
 Every phase leaves its document in `.taskflow/runs/<id>/`, so a run can be
-reread tomorrow and resumed after a crash.
+reread tomorrow and resumed after a crash. Nothing removes old ones on its own —
+run `task-flow-ai clean` when the folder gets big; it keeps the 20 most recent
+finished runs and never touches one still unfinished.
 
 ## The boundary
 

@@ -41,6 +41,10 @@ export function listRunIds(projectDir: string): string[] {
   return fs.readdirSync(dir).sort().reverse();
 }
 
+export function removeRunDirectory(projectDir: string, runId: string): void {
+  fs.rmSync(runDirectory(projectDir, runId), { recursive: true, force: true });
+}
+
 /**
  * Runs are working files, like logs: they stay on the machine that made them.
  * Writing this once means nobody has to remember to edit their own .gitignore,
