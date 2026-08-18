@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "task-flow-ai",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "description": "Runs a coding task through six separate phases — intake, explore, plan, implement, review, security — each as a fresh subagent that reads only the artifacts written before it. Stops after the plan and waits for your approval. Every phase leaves its artifact on disk, so a run can be reread afterwards.",
       "author": {
         "name": "AleAlle62"

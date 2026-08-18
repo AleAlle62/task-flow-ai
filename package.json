@@ -1,6 +1,6 @@
 {
   "name": "@alealle62/task-flow-ai",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A six-phase agent pipeline you approve from the browser.",
   "license": "MIT",
   "type": "module",

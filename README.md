@@ -150,7 +150,7 @@ because the lock that failed here was a default nobody had to change.
   you approve. Read it.
 - **Write paths are checked after the fact**, not prevented.
 - **The dashboard is local only.** It binds to `127.0.0.1`.
-- **Version 0.1.2.**
+- **Version 0.1.3.**
 
 ## The repository
 
