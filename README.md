@@ -10,20 +10,12 @@ single line of your code is touched.
 
 ```mermaid
 flowchart LR
-    I(intake) -->|spec| E(explore)
-    E -->|map| P(plan)
-    P -->|plan| G{you decide}
-    G -->|approve| M(implement)
-    G -->|reject| X([run stops])
-    M -->|report| R(review)
-    R -->|review| S(security)
-    S --> D{you decide}
-    R -. blocking findings, twice at most .-> M
+    A(intake) --> B(explore) --> C(plan) --> STOP{you approve} --> D(implement) --> E(review) --> F(security)
 
     classDef writer fill:#fbe9ec,stroke:#9c2b3c,stroke-width:2px,color:#7d2231
-    classDef gate fill:#fdf3e0,stroke:#9a6a12,color:#7a520c
-    class M writer
-    class G,D gate
+    classDef gate fill:#fdf3e0,stroke:#9a6a12,stroke-width:2px,color:#7a520c
+    class D writer
+    class STOP gate
 ```
 
 Only **implement** can change your code. The other five can read your project
@@ -82,7 +74,7 @@ Everything else the command works out for itself:
 | An unfinished run in this project | it offers to continue it, so you do not pay twice for the phases that finished |
 | Port `4179` already busy | it takes a free one |
 | No browser, or no way to open one | it asks in the terminal instead |
-| A `.taskflow/pipeline.yaml` in your project | it uses that instead of the packaged flow |
+| A project carrying its own phases | it names the files and asks before using them |
 
 Before anything runs it prints the flow it is about to follow — every phase,
 what it reads, what it may do, where it stops — so you can read what is about to
@@ -145,21 +137,17 @@ and the pipeline is unchanged — it asks in the terminal instead.
 
 ```mermaid
 sequenceDiagram
-    participant You
+    participant You as you
     participant Tool as task-flow-ai
-    participant Agent as coding agent
-    participant Disk as files on disk
+    participant Agent as the agent
 
     You->>Tool: what needs doing
-    loop each phase
-        Tool->>Agent: the phase's instructions + the files it may read
-        Note over Agent: only the tools this phase is allowed<br/>no network, no credentials
-        Agent-->>Tool: one document
-        Tool->>Disk: save it
-    end
-    Tool->>You: the plan, and a stop
-    You-->>Tool: approve, or reject with a note
-    Note over Agent: the one phase that may write<br/>runs only after this point
+    Tool->>Agent: one phase, and only the files it may read
+    Agent-->>Tool: one document
+    Note over Tool,Agent: repeats, phase by phase
+    Tool->>You: the plan — nothing written yet
+    You-->>Tool: approve
+    Tool->>Agent: now the phase that may write
 ```
 
 Nothing is written to your code until the stop in the middle has an answer.
